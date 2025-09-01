@@ -71,6 +71,10 @@ export default function Dashboard() {
   const [tokenLogos, setTokenLogos] = useState<Record<string, string>>({});
   const [logoLoading, setLogoLoading] = useState<Set<string>>(new Set());
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const strategiesPerPage = 15;
+
   // Function to fetch token logo
   const fetchTokenLogo = useCallback(
     async (tokenId: string) => {
@@ -136,6 +140,9 @@ export default function Dashboard() {
 
       const poolId = await getRandomRecommendationPoolId();
       setRandomSelectedPoolId(poolId);
+
+      // Reset to first page when showing random recommendation
+      setCurrentPage(1);
     } catch (e) {
       console.error("Random recommendation failed", e);
       let errorMessage = "Failed to get random recommendation";
@@ -376,6 +383,12 @@ export default function Dashboard() {
       }),
     [strategies, pools, getTokenLogo]
   );
+
+  // Pagination logic
+  const totalPages = Math.ceil(fetchedStrategies.length / strategiesPerPage);
+  const startIndex = (currentPage - 1) * strategiesPerPage;
+  const endIndex = startIndex + strategiesPerPage;
+  const currentStrategies = fetchedStrategies.slice(startIndex, endIndex);
 
   // Store strategies and raw pool data in localStorage for Strategy component
   useEffect(() => {
@@ -800,7 +813,7 @@ export default function Dashboard() {
                           </div>
                         </div>
                       ))
-                    : fetchedStrategies
+                    : currentStrategies
                         .filter((s) =>
                           randomSelectedPoolId
                             ? s.id === randomSelectedPoolId
@@ -944,7 +957,7 @@ export default function Dashboard() {
 
             {/* Mobile/Tablet Card View */}
             <div className="lg:hidden space-y-3 sm:space-y-4 relative">
-              {fetchedStrategies
+              {currentStrategies
                 .filter((s) =>
                   randomSelectedPoolId ? s.id === randomSelectedPoolId : true
                 )
@@ -1055,86 +1068,128 @@ export default function Dashboard() {
             </div>
 
             {/* Pagination */}
-            <div className="flex items-center justify-center space-x-1 sm:space-x-2 mt-4 sm:mt-6">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-[#7E868C] dark:text-[#565E64] text-xs sm:text-sm"
-                disabled
-              >
-                <svg
-                  className="w-3 h-3 sm:w-4 sm:h-4 mr-1"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center space-x-1 sm:space-x-2 mt-4 sm:mt-6">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={`text-xs sm:text-sm px-3 sm:px-4 py-2 font-medium transition-all duration-200 ${
+                    currentPage === 1
+                      ? "text-[#95A0A6] dark:text-[#565E64] cursor-not-allowed opacity-50"
+                      : "text-[#7E868C] dark:text-[#95A0A6] hover:bg-[#EFEFEFE5] dark:hover:bg-[#161E24] hover:text-[#565E64] dark:hover:text-[#F5FBFF] hover:scale-105"
+                  }`}
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 19l-7-7 7-7"
-                  />
-                </svg>
-                <span className="hidden sm:inline">Prev</span>
-              </Button>
-              <Button
-                variant="default"
-                size="sm"
-                className="bg-[#EFEFEFE5] dark:bg-[#161E24] text-[#565E64] dark:text-[#95A0A6] text-xs sm:text-sm px-2 sm:px-3"
-              >
-                1
-              </Button>
-              <Button
-                variant="default"
-                size="sm"
-                className="bg-[#EFEFEFE5] dark:bg-[#161E24] text-[#565E64] dark:text-[#95A0A6] text-xs sm:text-sm px-2 sm:px-3"
-              >
-                2
-              </Button>
-              <Button
-                variant="default"
-                size="sm"
-                className="bg-[#EFEFEFE5] dark:bg-[#161E24] text-[#565E64] dark:text-[#95A0A6] text-xs sm:text-sm px-2 sm:px-3"
-              >
-                3
-              </Button>
-              <Button
-                variant="default"
-                size="sm"
-                className="bg-[#EFEFEFE5] dark:bg-[#161E24] text-[#565E64] dark:text-[#95A0A6] text-xs sm:text-sm px-2 sm:px-3"
-              >
-                4
-              </Button>
-              <Button
-                variant="default"
-                size="sm"
-                className="bg-[#EFEFEFE5] dark:bg-[#161E24] text-[#565E64] dark:text-[#95A0A6] text-xs sm:text-sm px-2 sm:px-3"
-              >
-                5
-              </Button>
+                  <svg
+                    className="w-3 h-3 sm:w-4 sm:h-4 mr-1"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 19l-7-7 7-7"
+                    />
+                  </svg>
+                  <span className="hidden sm:inline">Prev</span>
+                </Button>
 
-              <span className="text-[#7e868c] text-xs sm:text-sm">...</span>
-              <Button
-                variant="outline"
-                size="sm"
-                className="bg-[#EFEFEFE5] dark:bg-[#161E24] text-[#565E64] dark:text-[#95A0A6] text-xs sm:text-sm"
-              >
-                <span className="hidden sm:inline">Next</span>
-                <svg
-                  className="w-3 h-3 sm:w-4 sm:h-4 ml-1"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+                {/* Page Numbers */}
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  const pageNum = i + 1;
+                  const isActive = currentPage === pageNum;
+                  return (
+                    <Button
+                      key={pageNum}
+                      variant={isActive ? "default" : "ghost"}
+                      size="sm"
+                      className={`text-xs sm:text-sm px-3 sm:px-4 py-2 font-medium transition-all duration-200 ${
+                        isActive
+                          ? "bg-[#1fadd8] text-white shadow-lg scale-105 border-2 border-[#1a8bb8] hover:bg-[#1a8bb8]"
+                          : "text-[#7E868C] dark:text-[#95A0A6] hover:bg-[#EFEFEFE5] dark:hover:bg-[#161E24] hover:text-[#565E64] dark:hover:text-[#F5FBFF]"
+                      }`}
+                      onClick={() => setCurrentPage(pageNum)}
+                    >
+                      {pageNum}
+                    </Button>
+                  );
+                })}
+
+                {totalPages > 5 && (
+                  <>
+                    <span className="text-[#7e868c] text-xs sm:text-sm">
+                      ...
+                    </span>
+                    <Button
+                      variant={currentPage === totalPages ? "default" : "ghost"}
+                      size="sm"
+                      className={`text-xs sm:text-sm px-3 sm:px-4 py-2 font-medium transition-all duration-200 ${
+                        currentPage === totalPages
+                          ? "bg-[#1fadd8] text-white shadow-lg scale-105 border-2 border-[#1a8bb8] hover:bg-[#1a8bb8]"
+                          : "text-[#7E868C] dark:text-[#95A0A6] hover:bg-[#EFEFEFE5] dark:hover:bg-[#161E24] hover:text-[#565E64] dark:hover:text-[#F5FBFF]"
+                      }`}
+                      onClick={() => setCurrentPage(totalPages)}
+                    >
+                      {totalPages}
+                    </Button>
+                  </>
+                )}
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={`text-xs sm:text-sm px-3 sm:px-4 py-2 font-medium transition-all duration-200 ${
+                    currentPage === totalPages
+                      ? " dark:bg-[#565E64] text-[#7E868C] dark:text-[#95A0A6] cursor-not-allowed opacity-50"
+                      : "bg-[#EFEFEFE5] dark:bg-[#161E24] text-[#565E64] dark:text-[#95A0A6] hover:bg-[#1fadd8] hover:text-white hover:scale-105 hover:shadow-lg"
+                  }`}
+                  disabled={currentPage === totalPages}
+                  onClick={() =>
+                    setCurrentPage(Math.min(totalPages, currentPage + 1))
+                  }
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
-              </Button>
-            </div>
+                  <span className="hidden sm:inline">Next</span>
+                  <svg
+                    className="w-3 h-3 sm:w-4 sm:h-4 ml-1"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                </Button>
+              </div>
+            )}
+
+            {/* Page Info */}
+            {totalPages > 1 && (
+              <div className="text-center mt-3">
+                <div className="inline-flex items-center space-x-2 bg-[#EFEFEFE5] dark:bg-[#161E24] px-4 py-2 rounded-lg">
+                  <span className="text-sm text-[#7E868C] dark:text-[#95A0A6]">
+                    Page
+                  </span>
+                  <span className="text-lg font-bold text-[#1fadd8] dark:text-[#30CFFF]">
+                    {currentPage}
+                  </span>
+                  <span className="text-sm text-[#7E868C] dark:text-[#95A0A6]">
+                    of {totalPages}
+                  </span>
+                  <span className="text-[#7E868C] dark:text-[#95A0A6]">•</span>
+                  <span className="text-sm text-[#7E868C] dark:text-[#95A0A6]">
+                    Showing {currentStrategies.length} of{" "}
+                    {fetchedStrategies.length} strategies
+                  </span>
+                </div>
+              </div>
+            )}
           </>
         )}
 

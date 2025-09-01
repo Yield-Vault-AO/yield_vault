@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createContext, useContext, useState, useEffect } from "react";
+// import toast from "react-hot-toast";
 import type { ReactNode } from "react";
 
 // Pool interface matching what's used in Dashboard
@@ -91,6 +92,7 @@ export function PoolProvider({ children }: { children: ReactNode }) {
   const [strategies, setStrategies] = useState<Strategy[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // const hasShownToastRef = useRef(false);
 
   // Function to fetch pools from API
   const fetchPools = async () => {
@@ -114,11 +116,20 @@ export function PoolProvider({ children }: { children: ReactNode }) {
         arr = data.items;
       }
 
+      // Only show toast if we actually have new data and haven't shown it before
+      // const isNewData = pools.length === 0 && arr.length > 0;
+
       setPools(arr);
 
       // Process pools into strategies (this logic will be moved from Dashboard)
       const processedStrategies = processPoolsToStrategies(arr);
       setStrategies(processedStrategies);
+
+      // Show success toast only once to avoid duplicates
+      // if (isNewData && !hasShownToastRef.current) {
+      //   toast.success(`Successfully loaded ${arr.length} pools and strategies`);
+      //   hasShownToastRef.current = true;
+      // }
     } catch (err) {
       let errorMessage = "Failed to load pools";
 
@@ -140,6 +151,14 @@ export function PoolProvider({ children }: { children: ReactNode }) {
 
       setError(errorMessage);
       console.error("Error fetching pools:", err);
+
+      // if (!hasShownToastRef.current) {
+      //   toast.error(`Failed to load pools: ${errorMessage}`);
+      //   hasShownToastRef.current = true;
+      // }
+
+      // // Show error toast
+      // toast.error(`Failed to load pools: ${errorMessage}`);
     } finally {
       setLoading(false);
     }

@@ -21,7 +21,12 @@ import { usePools } from "../contexts/PoolContext";
 import { AO_TOKEN } from "../constants/yao_process";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import React from "react";
-import { getTokenInfo, formatTokenBalance, convertHumanAmountToBaseUnits } from "../helpers/token";
+import toast from "react-hot-toast";
+import {
+  getTokenInfo,
+  formatTokenBalance,
+  convertHumanAmountToBaseUnits,
+} from "../helpers/token";
 // import user_circle from "../../public/user-circle.svg";
 import {
   getUserAgents,
@@ -204,7 +209,9 @@ export default function StrategyDetail() {
         const baseToken = determineBaseToken(pool);
         if (baseToken) {
           const bal = await getTokenBalance(baseToken, userAddress);
-          const formatted = await formatTokenBalance(baseToken, bal, { maxFractionDigits: 6 });
+          const formatted = await formatTokenBalance(baseToken, bal, {
+            maxFractionDigits: 6,
+          });
           setBaseTokenBalance(formatted);
         }
       } catch {
@@ -257,10 +264,28 @@ export default function StrategyDetail() {
         );
         setRelevantAgent(match || null);
       }
+
+      // Show success toast
+      toast.success(
+        "Agent deployed successfully! Check the agent section to monitor your deployment.",
+        {
+          duration: 5000,
+          position: "top-right",
+        }
+      );
     } catch (e: unknown) {
       console.error("Agent deployment failed:", e);
-      setAgentError(
-        e instanceof Error ? e.message : "Agent deployment failed."
+      const errorMessage =
+        e instanceof Error ? e.message : "Agent deployment failed.";
+      setAgentError(errorMessage);
+
+      // Show error toast
+      toast.error(
+        `Deployment failed: ${errorMessage}. Please check the agent section for more details.`,
+        {
+          duration: 6000,
+          position: "top-right",
+        }
       );
     } finally {
       setIsDeployingAgent(false);
@@ -277,7 +302,10 @@ export default function StrategyDetail() {
       }
 
       const baseTokenProcess = determineBaseToken(pool);
-      const quantity = await convertHumanAmountToBaseUnits(baseTokenProcess, depositAmount);
+      const quantity = await convertHumanAmountToBaseUnits(
+        baseTokenProcess,
+        depositAmount
+      );
       const messageId = await message({
         process: baseTokenProcess,
         tags: [
@@ -1054,6 +1082,11 @@ export default function StrategyDetail() {
                           value={deployStartDate}
                           onChange={(e) => setDeployStartDate(e.target.value)}
                         />
+                        {!deployStartDate && (
+                          <p className="text-xs text-[#7e868c] dark:text-[#95A0A6] mt-1">
+                            ⚠️ Start date is required to deploy agent
+                          </p>
+                        )}
                       </div>
                       <div className="space-y-1">
                         <label className="text-xs text-[#7e868c] dark:text-[#95A0A6]">
@@ -1085,9 +1118,16 @@ export default function StrategyDetail() {
                       </div>
                     </div>
                     <Button
-                      className="w-full !mt-2 bg-[#D6EEF6] dark:bg-[#052834] hover:bg-[#97c2d1] text-[#25A8CF] dark:text-[#30CFFF] h-12"
+                      className="w-full !mt-2 bg-[#D6EEF6] dark:bg-[#052834] hover:bg-[#97c2d1] text-[#25A8CF] dark:text-[#30CFFF] h-12 disabled:cursor-not-allowed"
                       onClick={handleDeployAgent}
-                      disabled={isDeployingAgent || !userAddress}
+                      disabled={
+                        isDeployingAgent || !userAddress || !deployStartDate
+                      }
+                      title={
+                        !deployStartDate
+                          ? "Please select a start date to deploy agent"
+                          : ""
+                      }
                     >
                       {isDeployingAgent ? "Deploying..." : "Deploy Agent"}
                     </Button>
