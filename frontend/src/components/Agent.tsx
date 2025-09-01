@@ -18,6 +18,7 @@ import {
 import { createDataItemSigner, message, result } from "@permaweb/aoconnect";
 import { AO_TOKEN } from "../constants/yao_process";
 import { getTokenBalance } from "../services/aoService";
+import { formatTokenBalance, convertHumanAmountToBaseUnits } from "../helpers/token";
 
 export default function Agent() {
   const { id } = useParams<{ id: string }>();
@@ -76,12 +77,13 @@ export default function Agent() {
     setTransferError(null);
     try {
       const baseToken = determineBaseToken();
+      const quantity = await convertHumanAmountToBaseUnits(baseToken, depositAmount);
       const messageId = await message({
         process: baseToken,
         tags: [
           { name: "Action", value: "Transfer" },
           { name: "Recipient", value: agentId },
-          { name: "Quantity", value: depositAmount },
+          { name: "Quantity", value: quantity.toString() },
         ],
         data: "",
         signer: createDataItemSigner(window.arweaveWallet),
@@ -157,7 +159,8 @@ export default function Agent() {
         if (!address) return;
         const baseToken = determineBaseToken();
         const bal = await getTokenBalance(baseToken, address);
-        setBaseTokenBalance(bal);
+        const formatted = await formatTokenBalance(baseToken, bal, { maxFractionDigits: 6 });
+        setBaseTokenBalance(formatted);
       } catch (e) {
         console.warn("Failed to load base token balance:", e);
       }

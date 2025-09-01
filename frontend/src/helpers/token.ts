@@ -90,3 +90,93 @@ export async function assertTransferResult(message: string, process: string) {
         }
     }
 }
+
+// In-memory cache to avoid repeated Info dryruns per token
+const tokenInfoCache = new Map<string, TokenInfo>()
+
+export async function getCachedTokenInfo(tokenId: string): Promise<TokenInfo> {
+    if (tokenInfoCache.has(tokenId)) return tokenInfoCache.get(tokenId) as TokenInfo
+    const info = await getTokenInfo(tokenId)
+    tokenInfoCache.set(tokenId, info)
+    return info
+}
+
+// Convert a raw quantity (base units) to human units using denomination, without floating point errors
+export function formatQuantityWithDenomination(
+    rawQuantity: string | bigint,
+    denomination: number,
+    {
+        maxFractionDigits = 6,
+        trimTrailingZeros = true,
+        useGrouping = true,
+    }: { maxFractionDigits?: number; trimTrailingZeros?: boolean; useGrouping?: boolean } = {},
+): string {
+    const raw = typeof rawQuantity === "bigint" ? rawQuantity : BigInt(rawQuantity || "0")
+    if (denomination <= 0) {
+        const intStr = raw.toString()
+        return useGrouping ? Number(intStr).toLocaleString() : intStr
+    }
+
+    const base = BigInt(10) ** BigInt(denomination)
+    const integerPart = raw / base
+    let fractionalPart = (raw % base).toString().padStart(denomination, "0")
+
+    // Limit fractional digits
+    if (denomination > maxFractionDigits) {
+        const cut = fractionalPart.slice(0, maxFractionDigits)
+        // Round down (floor). For simplicity, no rounding up.
+        fractionalPart = cut
+    }
+
+    if (trimTrailingZeros) {
+        fractionalPart = fractionalPart.replace(/0+$/g, "")
+    }
+
+    const intFormatted = useGrouping
+        ? Number(integerPart.toString()).toLocaleString()
+        : integerPart.toString()
+
+    return fractionalPart.length > 0 ? `${intFormatted}.${fractionalPart}` : intFormatted
+}
+
+// Convenience: format balance for a given token process id using its Info
+export async function formatTokenBalance(
+    tokenProcessId: string,
+    rawQuantity: string,
+    options?: Parameters<typeof formatQuantityWithDenomination>[2] & { includeTicker?: boolean },
+): Promise<string> {
+    const info = await getCachedTokenInfo(tokenProcessId)
+    const num = formatQuantityWithDenomination(rawQuantity, info.denomination, options)
+    return options?.includeTicker === false ? num : `${num} ${info.ticker}`
+}
+
+// Parse a human input like "1234.567" into base units bigint using denomination
+export function parseHumanAmountToBaseUnits(
+    humanAmount: string,
+    denomination: number,
+): bigint {
+    if (!humanAmount) return 0n
+    const cleaned = humanAmount.trim().replace(/,/g, "")
+    if (!/^\d*(?:\.\d*)?$/.test(cleaned)) return 0n
+    const [intPartRaw, fracRaw = ""] = cleaned.split(".")
+    const intPart = intPartRaw === "" ? "0" : intPartRaw
+    const fracLimited = fracRaw.slice(0, Math.max(0, denomination))
+    const fracPadded = fracLimited.padEnd(Math.max(0, denomination), "0")
+    const base = 10n ** BigInt(Math.max(0, denomination))
+    try {
+        const intBig = BigInt(intPart)
+        const fracBig = fracPadded ? BigInt(fracPadded) : 0n
+        return intBig * base + fracBig
+    } catch {
+        return 0n
+    }
+}
+
+// Convenience: convert human amount for a token id using its denomination
+export async function convertHumanAmountToBaseUnits(
+    tokenProcessId: string,
+    humanAmount: string,
+): Promise<bigint> {
+    const info = await getCachedTokenInfo(tokenProcessId)
+    return parseHumanAmountToBaseUnits(humanAmount, info.denomination)
+}
