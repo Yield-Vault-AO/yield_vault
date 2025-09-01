@@ -58,9 +58,8 @@ export default function StrategyDetail() {
   const [agentError, setAgentError] = useState<string | null>(null);
   const [deployStartDate, setDeployStartDate] = useState<string>("");
   const [deployEndDate, setDeployEndDate] = useState<string>("");
-  const [deployRunIndefinitely, setDeployRunIndefinitely] = useState<boolean>(
-    false
-  );
+  const [deployRunIndefinitely, setDeployRunIndefinitely] =
+    useState<boolean>(false);
 
   // User agent state
   const [userAddress, setUserAddress] = useState<string | null>(null);
@@ -156,7 +155,9 @@ export default function StrategyDetail() {
   React.useEffect(() => {
     const fetchAddress = async () => {
       try {
-        const addr = await (window as unknown as ArweaveWalletWindow).arweaveWallet?.getActiveAddress?.();
+        const addr = await (
+          window as unknown as ArweaveWalletWindow
+        ).arweaveWallet?.getActiveAddress?.();
         if (addr) setUserAddress(addr);
       } catch {
         // ignore; UI will prompt to connect if needed
@@ -206,14 +207,13 @@ export default function StrategyDetail() {
           setBaseTokenBalance(bal);
         }
       } catch {
-        console.error("Failed to fetch user agents:")
+        console.error("Failed to fetch user agents:");
         setAgentError("Unable to load your agents. Connect wallet and retry.");
       }
     };
 
     fetchAgents();
   }, [userAddress, id, pool, pool?.amm_process, determineBaseToken]);
-
 
   const handleDeployAgent = async () => {
     if (!pool) return;
@@ -421,10 +421,44 @@ export default function StrategyDetail() {
     return `$${priceNum.toFixed(decimals)}`;
   };
 
+  // Smart market cap formatter that handles different units
+  const formatMarketCap = (value: string | undefined) => {
+    if (!value) return "N/A";
+
+    const numValue = Number(value);
+    if (isNaN(numValue)) return "N/A";
+
+    console.log("formatMarketCap raw value:", numValue);
+
+    // Sanity check – reject values larger than ~100T (world stock market size)
+    const MAX_REASONABLE = 100_000_000_000_000; // 100 trillion
+    if (numValue > MAX_REASONABLE * 10) {
+      console.warn("Market cap value too large, possible API error:", numValue);
+      return "N/A"; // or "Invalid data"
+    }
+
+    if (numValue >= 1_000_000_000_000) {
+      return `$${(numValue / 1_000_000_000_000).toFixed(2)}T`;
+    }
+    if (numValue >= 1_000_000_000) {
+      return `$${(numValue / 1_000_000_000).toFixed(2)}B`;
+    }
+    if (numValue >= 1_000_000) {
+      return `$${(numValue / 1_000_000).toFixed(2)}M`;
+    }
+    if (numValue >= 1_000) {
+      return `$${(numValue / 1_000).toFixed(2)}K`;
+    }
+
+    return `$${numValue.toFixed(2)}`;
+  };
+
   // Format USD values with proper scaling
   const formatUSD = (value: number | undefined) => {
     if (!value || isNaN(value)) return "$0";
 
+    // Debug logging to see the raw value
+    console.log("formatUSD raw value:", value);
     // Handle very large numbers (billions)
     if (value >= 1_000_000_000) {
       return `$${(value / 1_000_000_000).toFixed(2)}B`;
@@ -678,9 +712,9 @@ export default function StrategyDetail() {
                             Market Cap
                           </div>
                           <div className="font-semibold text-[#1A2228] dark:text-[#EAEAEA]">
-                            {pool.token0_market_cap
-                              ? formatUSD(Number(pool.token0_market_cap))
-                              : "N/A"}
+                            {formatMarketCap(
+                              pool.token0_market_cap?.toString()
+                            )}
                           </div>
                         </div>
                         <div className="text-center p-2 bg-white/40 dark:bg-[#3D2B2B]/40 rounded border border-[#FECACA] dark:border-[#4A2F2F]">
@@ -749,9 +783,9 @@ export default function StrategyDetail() {
                             Market Cap
                           </div>
                           <div className="font-semibold text-[#1A2228] dark:text-[#EAEAEA]">
-                            {pool.token1_market_cap
-                              ? formatUSD(Number(pool.token1_market_cap))
-                              : "N/A"}
+                            {formatMarketCap(
+                              pool.token1_market_cap?.toString()
+                            )}
                           </div>
                         </div>
                         <div className="text-center p-2 bg-white/40 dark:bg-[#3D2B2B]/40 rounded border border-[#FECACA] dark:border-[#4A2F2F]">
@@ -996,17 +1030,22 @@ export default function StrategyDetail() {
               <CardContent className="px-6 py-3">
                 {agentError && !relevantAgent && (
                   <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                    <p className="text-red-600 dark:text-red-400 text-sm">{agentError}</p>
+                    <p className="text-red-600 dark:text-red-400 text-sm">
+                      {agentError}
+                    </p>
                   </div>
                 )}
                 {!relevantAgent ? (
                   <div className="space-y-4">
                     <div className="p-4 rounded-lg bg-[#FFF5F5] dark:bg-[#2D1B1B] border border-[#FECACA] dark:border-[#4A2F2F] text-[#565E64] dark:text-[#EAEAEA] text-sm">
-                      No agent is deployed for this pool yet. Deploy an agent to enable deposits.
+                      No agent is deployed for this pool yet. Deploy an agent to
+                      enable deposits.
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div className="space-y-1">
-                        <label className="text-xs text-[#7e868c] dark:text-[#95A0A6]">Start Date</label>
+                        <label className="text-xs text-[#7e868c] dark:text-[#95A0A6]">
+                          Start Date
+                        </label>
                         <input
                           type="datetime-local"
                           className="w-full rounded-md bg-[#EAEAEA] dark:bg-[#1B2329] text-[#1A2228] dark:text-[#EAEAEA] p-2"
@@ -1015,7 +1054,9 @@ export default function StrategyDetail() {
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-xs text-[#7e868c] dark:text-[#95A0A6]">End Date</label>
+                        <label className="text-xs text-[#7e868c] dark:text-[#95A0A6]">
+                          End Date
+                        </label>
                         <input
                           type="datetime-local"
                           className="w-full rounded-md bg-[#EAEAEA] dark:bg-[#1B2329] text-[#1A2228] dark:text-[#EAEAEA] p-2 disabled:opacity-50"
@@ -1029,13 +1070,17 @@ export default function StrategyDetail() {
                           id="run-indef"
                           type="checkbox"
                           checked={deployRunIndefinitely}
-                          onChange={(e) => setDeployRunIndefinitely(e.target.checked)}
+                          onChange={(e) =>
+                            setDeployRunIndefinitely(e.target.checked)
+                          }
                         />
-                        <label htmlFor="run-indef" className="text-xs text-[#7e868c] dark:text-[#95A0A6]">
+                        <label
+                          htmlFor="run-indef"
+                          className="text-xs text-[#7e868c] dark:text-[#95A0A6]"
+                        >
                           Run indefinitely
                         </label>
                       </div>
-                      
                     </div>
                     <Button
                       className="w-full !mt-2 bg-[#D6EEF6] dark:bg-[#052834] hover:bg-[#97c2d1] text-[#25A8CF] dark:text-[#30CFFF] h-12"
@@ -1074,7 +1119,9 @@ export default function StrategyDetail() {
                         </svg>
                       </div>
                       <div className="text-right">
-                        <div className="text-[#7E868C] dark:text-[#95A0A6] text-sm">Wallet Balance</div>
+                        <div className="text-[#7E868C] dark:text-[#95A0A6] text-sm">
+                          Wallet Balance
+                        </div>
                         <div className="font-medium text-lg text-[#565E64] dark:text-[#EAEAEA]">
                           {baseTokenBalance}
                         </div>
@@ -1095,7 +1142,9 @@ export default function StrategyDetail() {
                           variant="ghost"
                           className="text-[#7E868C] gradient-card px-4 py-7"
                           onClick={() => {
-                            setDepositAmount(String(strategy?.walletBalance || ""));
+                            setDepositAmount(
+                              String(strategy?.walletBalance || "")
+                            );
                           }}
                         >
                           Max

@@ -120,7 +120,25 @@ export function PoolProvider({ children }: { children: ReactNode }) {
       const processedStrategies = processPoolsToStrategies(arr);
       setStrategies(processedStrategies);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load pools");
+      let errorMessage = "Failed to load pools";
+
+      if (err instanceof Error) {
+        if (err.message.includes("Failed to fetch")) {
+          errorMessage =
+            "Network connection issue. Please check your internet connection and try again.";
+        } else if (err.message.includes("HTTP 404")) {
+          errorMessage =
+            "Pools data not found. The service might be temporarily unavailable.";
+        } else if (err.message.includes("HTTP 500")) {
+          errorMessage = "Server error. Please try again in a few moments.";
+        } else if (err.message.includes("HTTP 403")) {
+          errorMessage = "Access denied. Please check your permissions.";
+        } else {
+          errorMessage = `Unable to load pools: ${err.message}`;
+        }
+      }
+
+      setError(errorMessage);
       console.error("Error fetching pools:", err);
     } finally {
       setLoading(false);
@@ -268,7 +286,7 @@ export function PoolProvider({ children }: { children: ReactNode }) {
   };
 
   const getStrategyById = (id: string): Strategy | undefined => {
-    return strategies.find((strategy: { id: string; }) => strategy.id === id);
+    return strategies.find((strategy: { id: string }) => strategy.id === id);
   };
 
   // Fetch pools when component mounts

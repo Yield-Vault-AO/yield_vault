@@ -24,7 +24,10 @@ const Header = () => {
 
   const navItems = [
     { href: "/", label: "Home" },
-    { href: "/docs", label: "Docs" },
+    {
+      href: "https://yao-docs.gitbook.io/documentation/",
+      label: "Docs",
+    },
     { href: "/faqs", label: "FAQs" },
     { href: "/bridge", label: "Bridge" },
   ];
@@ -96,11 +99,12 @@ const Header = () => {
             return (
               <a
                 key={item.href}
+                target={item.label === "Docs" ? "_blank" : "_self"}
                 href={item.href}
                 className={`text-sm transition-colors ${
                   isActive
                     ? "text-[#1a2228] dark:text-white font-semibold"
-                    : "text-[#7E868C] dark:text-gray-300 hover:text-[#1A2228] dark:hover:text-white"
+                    : "text-[#828c7e] dark:text-gray-300 hover:text-[#1A2228] dark:hover:text-white"
                 }`}
               >
                 <div className="flex items-center space-x-1.5">

@@ -13,10 +13,10 @@ export default function RecommendButton({ className }: RecommendButtonProps) {
     <>
       <Button
         onClick={() => setIsModalOpen(true)}
-        className={`h-10 md:h-12 px-6 md:px-10 text-sm md:text-base rounded-lg bg-gradient-to-br from-[#4C545A] to-[#060E14] dark:bg-gradient-to-br dark:from-[#DAD9D9E5] dark:to-[#F8F7F4] dark:text-[#1A2228] backdrop-blur-md text-white font-semibold hover:scale-105 transition-all duration-200 shadow-lg animate-bounce ${className}`}
+        className={`h-10 md:h-12 px-6 md:px-10 text-sm md:text-base rounded-lg bg-gradient-to-br from-[#4C545A] to-[#060E14] dark:bg-gradient-to-br dark:from-[#DAD9D9E5] dark:to-[#F8F7F4] dark:text-[#1A2228] backdrop-blur-md text-white font-semibold hover:scale-105 transition-all duration-200 w-full md:w-auto shadow-lg animate-bounce ${className}`}
       >
         <svg
-          className="w-4 h-4 mr-2"
+          className="w-5 h-5 mr-2"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"

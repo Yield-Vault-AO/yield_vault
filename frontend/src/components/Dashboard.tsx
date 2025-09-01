@@ -63,7 +63,9 @@ export default function Dashboard() {
   // Random recommendation UI state
   const [randomLoading, setRandomLoading] = useState(false);
   const [randomError, setRandomError] = useState<string | null>(null);
-  const [randomSelectedPoolId, setRandomSelectedPoolId] = useState<string | null>(null);
+  const [randomSelectedPoolId, setRandomSelectedPoolId] = useState<
+    string | null
+  >(null);
 
   // State for token logos
   const [tokenLogos, setTokenLogos] = useState<Record<string, string>>({});
@@ -136,9 +138,21 @@ export default function Dashboard() {
       setRandomSelectedPoolId(poolId);
     } catch (e) {
       console.error("Random recommendation failed", e);
-      setRandomError(
-        e instanceof Error ? e.message : "Failed to get random recommendation"
-      );
+      let errorMessage = "Failed to get random recommendation";
+
+      if (e instanceof Error) {
+        if (e.message.includes("Failed to fetch")) {
+          errorMessage =
+            "Network connection issue. Please check your internet connection and try again.";
+        } else if (e.message.includes("No pools available")) {
+          errorMessage =
+            "No pools are currently available for recommendations.";
+        } else {
+          errorMessage = `Unable to get recommendation: ${e.message}`;
+        }
+      }
+
+      setRandomError(errorMessage);
     } finally {
       setRandomLoading(false);
     }
@@ -250,7 +264,20 @@ export default function Dashboard() {
         setAgents(userAgents);
       } catch (error) {
         console.error("Failed to fetch agents:", error);
-        setAgentsError("Failed to load agents");
+        let errorMessage = "Failed to load agents";
+
+        if (error instanceof Error) {
+          if (error.message.includes("Failed to fetch")) {
+            errorMessage =
+              "Network connection issue. Please check your internet connection and try again.";
+          } else if (error.message.includes("wallet")) {
+            errorMessage = "Please connect your wallet to view your agents.";
+          } else {
+            errorMessage = `Unable to load agents: ${error.message}`;
+          }
+        }
+
+        setAgentsError(errorMessage);
       } finally {
         setLoadingAgents(false);
       }
@@ -490,8 +517,8 @@ export default function Dashboard() {
       </section>
 
       <div className="mx-4 sm:mx-6 md:mx-12 px-2 sm:px-4 md:px-6 pb-8">
-        <div className="flex justify-between space-x-4 sm:space-x-6 md:space-x-8 mb-4 sm:mb-6 border-b dark:border-[#20282E] border-[#EAEAEA]">
-          <div>
+        <div className="flex flex-col md:flex-row justify-between space-x-4 sm:space-x-6 md:space-x-8 mb-4 sm:mb-6 border-b dark:border-[#20282E] border-[#EAEAEA]">
+          <div className="flex items-center gap-2 space-x-2">
             <button
               onClick={() => setActiveTab("strategies")}
               className={`pb-2 px-1 text-xs sm:text-sm font-medium border-b-2 transition-colors ${
@@ -524,12 +551,12 @@ export default function Dashboard() {
             </button>
           </div>
 
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex flex-col md:flex-row items-center gap-2  mb-1 mt-5 md:mt-0">
             <RecommendButton />
             <Button
               onClick={handleRandomRecommend}
               disabled={randomLoading}
-              className="bg-[#1A2228] hover:bg-[#10161b] dark:bg-[#F5FBFF] dark:text-[#1A2228] dark:hover:bg-[#e7eef5]"
+              className="bg-[#1A2228] hover:bg-[#10161b] dark:bg-[#F5FBFF] text-[#eef2f5] dark:text-[#1A2228] dark:hover:bg-[#e7eef5] animate-bounce transition-all duration-200 h-10 md:h-12 px-6 w-full md:w-auto"
             >
               {randomLoading ? (
                 <div className="flex items-center gap-2">
@@ -680,12 +707,46 @@ export default function Dashboard() {
                       <span className="text-[#7e868c]">Loading pools…</span>
                     )}
                     {!loadingPools && poolsError && (
-                      <span className="text-red-500">{poolsError}</span>
+                      <div className="flex items-center justify-center py-8">
+                        <div className="text-center">
+                          <div className="w-16 h-16 mx-auto mb-4 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
+                            <svg
+                              className="w-8 h-8 text-red-500"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+                              />
+                            </svg>
+                          </div>
+                          <h3 className="text-lg font-semibold text-[#1A2228] dark:text-[#EAEAEA] mb-2">
+                            Unable to Load Data
+                          </h3>
+                          <p className="text-[#565E64] dark:text-[#95A0A6] text-sm mb-4 max-w-md">
+                            {poolsError}
+                          </p>
+                          <button
+                            onClick={() => window.location.reload()}
+                            className="px-4 py-2 bg-[#1fadd8] text-white rounded-lg hover:bg-[#1a8bb8] transition-colors"
+                          >
+                            Try Again
+                          </button>
+                        </div>
+                      </div>
                     )}
                   </div>
                   {/* Table Header */}
                   <div className="grid grid-cols-7 bg-[#F0F0F0] dark:bg-[#182026] rounded-tr-xl rounded-tl-xl gap-4 p-4 text-[#7e868c] text-sm font-medium">
-                    <div className="col-span-3">STRATEGY NAME</div>
+                    <div className="col-span-3">
+                      {activeTab === "strategies"
+                        ? "STRATEGY NAME"
+                        : "POOL NAME"}
+                    </div>
                     <div className="text-center">APY</div>
                     <div className="text-center">RISK</div>
                     <div className="text-center">TVL</div>
@@ -741,138 +802,142 @@ export default function Dashboard() {
                       ))
                     : fetchedStrategies
                         .filter((s) =>
-                          randomSelectedPoolId ? s.id === randomSelectedPoolId : true
+                          randomSelectedPoolId
+                            ? s.id === randomSelectedPoolId
+                            : true
                         )
                         .map((strategy, index) => (
-                        <Link key={index} to={`/strategy/${strategy.id}`}>
-                          <div
-                            className={`grid grid-cols-7 gap-4 p-4 mb-2 rounded-br-lg rounded-bl-lg bg-[#F3F3F3] hover:bg-[#f7f7f6] dark:hover:bg-[#20282E] dark:bg-[#141C22] transition-colors cursor-pointer relative`}
-                          >
-                            {/* {strategy.isStrategy && (
+                          <Link key={index} to={`/strategy/${strategy.id}`}>
+                            <div
+                              className={`grid grid-cols-7 gap-4 p-4 mb-2 rounded-br-lg rounded-bl-lg bg-[#F3F3F3] hover:bg-[#f7f7f6] dark:hover:bg-[#20282E] dark:bg-[#141C22] transition-colors cursor-pointer relative`}
+                            >
+                              {/* {strategy.isStrategy && (
                     <div className="absolute inset-0 bg-white/60 dark:bg-[#141c2298] backdrop-blur-[0.5px] opacity-90 z-10 pointer-events-none"></div>
                   )} */}
 
-                            <div className="flex space-x-3 col-span-3">
-                              <div className=" flex">
-                                <span className="w-5 h-5 md:w-8 md:h-8 rounded-2xl bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#10181D] dark:to-[#141C22] backdrop-blur-md dark:text-white flex items-center justify-center transition-all duration-200 hover:scale-105 shadow-lg">
-                                  <img
-                                    src={strategy.token_icon}
-                                    alt={strategy.name}
-                                    className=""
-                                  />
-                                </span>
-                                <span className="w-5 h-5 md:w-8 md:h-8 rounded-2xl bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#10181D] dark:to-[#121A21] backdrop-blur-md dark:text-white flex items-center justify-center transition-all duration-200 hover:scale-105 shadow-lg -translate-x-2">
-                                  <img
-                                    src={strategy.token_icon2}
-                                    alt={strategy.name}
-                                    className=" "
-                                  />
-                                </span>
-                              </div>
-                              <div className="space-y-1">
-                                <div className="font-medium text-[#1a2228] dark:text-[#FEFEFD] flex items-center space-x-2">
-                                  <span>{strategy.name}</span>
-                                  {strategy.badges.map((badge, i) => (
-                                    <div className="flex items-center space-x-2">
-                                      <span className="w-4 h-4 md:w-8 md:h-6 rounded-lg bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#10181D] dark:to-[#121A21] backdrop-blur-md dark:text-white flex items-center justify-center transition-all duration-200 hover:scale-105 shadow-lg">
-                                        <img
-                                          src={strategy.verified}
-                                          alt={strategy.name}
-                                          className=""
-                                        />
-                                      </span>
-
-                                      <Badge
-                                        key={i}
-                                        variant="secondary"
-                                        className="bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#10181D] dark:to-[#121A21] backdrop-blur-md dark:text-white py-1 flex items-center justify-center transition-all duration-200 hover:scale-105 shadow-lg text-[#10181D] text-xs"
-                                      >
-                                        {badge}
-                                      </Badge>
-                                    </div>
-                                  ))}
-                                </div>
-
-                                <div className=" flex items-center space-x-1">
-                                  <img
-                                    src={strategy.protocol_icon}
-                                    alt={strategy.name}
-                                    className="w-4 h-4"
-                                  />
-                                  <span className="text-[#808c7e] text-sm">
-                                    {strategy.protocol}
+                              <div className="flex space-x-3 col-span-3">
+                                <div className=" flex">
+                                  <span className="w-5 h-5 md:w-8 md:h-8 rounded-2xl bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#10181D] dark:to-[#141C22] backdrop-blur-md dark:text-white flex items-center justify-center transition-all duration-200 hover:scale-105 shadow-lg">
+                                    <img
+                                      src={strategy.token_icon}
+                                      alt={strategy.name}
+                                      className=""
+                                    />
+                                  </span>
+                                  <span className="w-5 h-5 md:w-8 md:h-8 rounded-2xl bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#10181D] dark:to-[#121A21] backdrop-blur-md dark:text-white flex items-center justify-center transition-all duration-200 hover:scale-105 shadow-lg -translate-x-2">
+                                    <img
+                                      src={strategy.token_icon2}
+                                      alt={strategy.name}
+                                      className=" "
+                                    />
                                   </span>
                                 </div>
-                              </div>
-                            </div>
-                            <div className="text-center space-y-1">
-                              {strategy.isStrategy ? (
-                                <div
-                                  className={`p-1.5 mx-auto hover:bg-[#e9e9e9] w-4 h-4 md:w-10 md:h-10 text-center rounded-lg bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#20282E] dark:to-[#121A21] backdrop-blur-md font-bold dark:text-white transition-all duration-200 hover:scale-105 shadow-lg`}
-                                >
-                                  {strategy.apy}
-                                </div>
-                              ) : (
-                                <div
-                                  className={`font-medium ${strategy.apyColor}`}
-                                >
-                                  {strategy.apy}
-                                </div>
-                              )}
+                                <div className="space-y-1">
+                                  <div className="font-medium text-[#1a2228] dark:text-[#FEFEFD] flex items-center space-x-2">
+                                    <span>{strategy.name}</span>
+                                    {strategy.badges.map((badge, i) => (
+                                      <div className="flex items-center space-x-2">
+                                        <span className="w-4 h-4 md:w-8 md:h-6 rounded-lg bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#10181D] dark:to-[#121A21] backdrop-blur-md dark:text-white flex items-center justify-center transition-all duration-200 hover:scale-105 shadow-lg">
+                                          <img
+                                            src={strategy.verified}
+                                            alt={strategy.name}
+                                            className=""
+                                          />
+                                        </span>
 
-                              <div className="">
-                                {strategy.isStrategy ? (
-                                  <div></div>
-                                ) : (
-                                  <div className="text-[#7e868c] text-sm text-center flex items-center justify-center space-x-1">
-                                    <span>{strategy.points}</span>
+                                        <Badge
+                                          key={i}
+                                          variant="secondary"
+                                          className="bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#10181D] dark:to-[#121A21] backdrop-blur-md dark:text-white py-1 flex items-center justify-center transition-all duration-200 hover:scale-105 shadow-lg text-[#10181D] text-xs"
+                                        >
+                                          {badge}
+                                        </Badge>
+                                      </div>
+                                    ))}
+                                  </div>
 
-                                    <span>
-                                      <img
-                                        src={user_circle}
-                                        alt={strategy.name}
-                                      />
+                                  <div className=" flex items-center space-x-1">
+                                    <img
+                                      src={strategy.protocol_icon}
+                                      alt={strategy.name}
+                                      className="w-4 h-4"
+                                    />
+                                    <span className="text-[#808c7e] text-sm">
+                                      {strategy.protocol}
                                     </span>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="text-center space-y-1">
+                                {strategy.isStrategy ? (
+                                  <div
+                                    className={`p-1.5 mx-auto hover:bg-[#e9e9e9] w-4 h-4 md:w-10 md:h-10 text-center rounded-lg bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#20282E] dark:to-[#121A21] backdrop-blur-md font-bold dark:text-white transition-all duration-200 hover:scale-105 shadow-lg`}
+                                  >
+                                    {strategy.apy}
+                                  </div>
+                                ) : (
+                                  <div
+                                    className={`font-medium ${strategy.apyColor}`}
+                                  >
+                                    {strategy.apy}
+                                  </div>
+                                )}
+
+                                <div className="">
+                                  {strategy.isStrategy ? (
+                                    <div></div>
+                                  ) : (
+                                    <div className="text-[#7e868c] text-sm text-center flex items-center justify-center space-x-1">
+                                      <span>{strategy.points}</span>
+
+                                      <span>
+                                        <img
+                                          src={user_circle}
+                                          alt={strategy.name}
+                                        />
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="text-center">
+                                {strategy.isStrategy ? (
+                                  <div className="flex justify-center space-x-2">
+                                    <button className="p-1.5 font-bold hover:bg-[#e9e9e9] w-4 h-4 md:w-10 md:h-10 text-center rounded-lg bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#20282E] dark:to-[#121a21] backdrop-blur-md dark:text-white transition-all duration-200 hover:scale-105 shadow-lg">
+                                      —
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="flex justify-center">
+                                    <div className="flex space-x-1.5">
+                                      {generateRiskBars(
+                                        strategy.riskScore || 60
+                                      )}
+                                    </div>
                                   </div>
                                 )}
                               </div>
-                            </div>
-                            <div className="text-center">
-                              {strategy.isStrategy ? (
-                                <div className="flex justify-center space-x-2">
-                                  <button className="p-1.5 font-bold hover:bg-[#e9e9e9] w-4 h-4 md:w-10 md:h-10 text-center rounded-lg bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#20282E] dark:to-[#121a21] backdrop-blur-md dark:text-white transition-all duration-200 hover:scale-105 shadow-lg">
-                                    —
-                                  </button>
-                                </div>
-                              ) : (
-                                <div className="flex justify-center">
-                                  <div className="flex space-x-1.5">
-                                    {generateRiskBars(strategy.riskScore || 60)}
+
+                              <div className="">
+                                {strategy.isStrategy ? (
+                                  <div className="p-1.5 font-bold mx-auto hover:bg-[#e9e9e9] w-4 h-4 md:w-10 md:h-10 text-center rounded-lg bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#20282E] dark:to-[#121A21] backdrop-blur-md dark:text-white transition-all duration-200 hover:scale-105 shadow-lg">
+                                    {strategy.tvl}
                                   </div>
-                                </div>
-                              )}
-                            </div>
+                                ) : (
+                                  <div className="text-center font-medium text-[#565E64] ">
+                                    {strategy.tvl}
+                                  </div>
+                                )}
+                              </div>
 
-                            <div className="">
-                              {strategy.isStrategy ? (
-                                <div className="p-1.5 font-bold mx-auto hover:bg-[#e9e9e9] w-4 h-4 md:w-10 md:h-10 text-center rounded-lg bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#20282E] dark:to-[#121A21] backdrop-blur-md dark:text-white transition-all duration-200 hover:scale-105 shadow-lg">
-                                  {strategy.tvl}
-                                </div>
-                              ) : (
-                                <div className="text-center font-medium text-[#565E64] ">
-                                  {strategy.tvl}
-                                </div>
-                              )}
+                              <div className="text-center ">
+                                <button className="p-1.5 hover:bg-[#e9e9e9] w-10 h-10 text-center rounded-lg bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#10181D] dark:to-[#121A21] backdrop-blur-md dark:text-white transition-all duration-200 hover:scale-105 shadow-lg">
+                                  <img src={help_circle} alt={strategy.name} />
+                                </button>
+                              </div>
                             </div>
-
-                            <div className="text-center ">
-                              <button className="p-1.5 hover:bg-[#e9e9e9] w-10 h-10 text-center rounded-lg bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#10181D] dark:to-[#121A21] backdrop-blur-md dark:text-white transition-all duration-200 hover:scale-105 shadow-lg">
-                                <img src={help_circle} alt={strategy.name} />
-                              </button>
-                            </div>
-                          </div>
-                        </Link>
-                      ))}
+                          </Link>
+                        ))}
                 </CardContent>
               </Card>
             </div>
@@ -884,103 +949,109 @@ export default function Dashboard() {
                   randomSelectedPoolId ? s.id === randomSelectedPoolId : true
                 )
                 .map((strategy, index) => (
-                <Link key={index} to={`/strategy/${strategy.id}`}>
-                  <div className="relative">
-                    {strategy.isStrategy && (
-                      <div className="absolute inset-0 bg-white/60 dark:bg-[#141c2298] backdrop-blur-[0.5px] opacity-90 z-10 pointer-events-none rounded-lg"></div>
-                    )}
-                    <Card className="bg-white dark:bg-[#141C22] mb-2 p-2 sm:p-3 border border-gray-200 dark:border-[#20282E] shadow-sm hover:shadow-md transition-all duration-200">
-                      <CardContent className="px-3 sm:px-4 py-2 sm:py-3">
-                        <div className="relative z-20">
-                          {/* Header - Title and Token */}
-                          <div className="flex items-center justify-between mb-2 sm:mb-3">
-                            <div className="flex items-center space-x-2 sm:space-x-3">
-                              <img
-                                src={strategy.token_icon}
-                                alt={strategy.name}
-                                className="w-5 h-5 sm:w-6 sm:h-6 rounded-full"
-                              />
-                              <div>
-                                <h3 className="font-semibold text-[#1a2228] dark:text-[#FEFEFD] text-xs sm:text-sm">
-                                  {strategy.name}
-                                </h3>
-                                <p className="text-[#7e868c] text-xs flex items-center space-x-1">
-                                  <span>{strategy.protocol}</span>
+                  <Link key={index} to={`/strategy/${strategy.id}`}>
+                    <div className="relative">
+                      {strategy.isStrategy && (
+                        <div className="absolute inset-0 bg-white/60 dark:bg-[#141c2298] backdrop-blur-[0.5px] opacity-90 z-10 pointer-events-none rounded-lg"></div>
+                      )}
+                      <Card className="bg-white dark:bg-[#141C22] mb-2 p-2 sm:p-3 border border-gray-200 dark:border-[#20282E] shadow-sm hover:shadow-md transition-all duration-200">
+                        <CardContent className="px-3 sm:px-4 py-2 sm:py-3">
+                          <div className="relative z-20">
+                            {/* Header - Title and Token */}
+                            <div className="flex items-center justify-between mb-2 sm:mb-3">
+                              <div className="flex items-center space-x-2 sm:space-x-3">
+                                <img
+                                  src={strategy.token_icon}
+                                  alt={strategy.name}
+                                  className="w-5 h-5 sm:w-6 sm:h-6 rounded-full"
+                                />
+                                <div>
+                                  <h3 className="font-semibold text-[#1a2228] dark:text-[#FEFEFD] text-xs sm:text-sm">
+                                    {strategy.name}
+                                  </h3>
+                                  <p className="text-[#7e868c] text-xs flex items-center space-x-1">
+                                    <span>{strategy.protocol}</span>
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Verification and Badges */}
+                              <div className="flex items-center space-x-1 sm:space-x-2">
+                                <img
+                                  src={strategy.verified}
+                                  alt="verified"
+                                  className="w-3 h-3 sm:w-4 sm:h-4"
+                                />
+                                {strategy.badges.map((badge, i) => (
+                                  <Badge
+                                    key={i}
+                                    variant="secondary"
+                                    className="bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#10181D] dark:to-[#121A21] backdrop-blur-md dark:text-white shadow-sm text-[#10181D] text-xs px-1 sm:px-2 py-1"
+                                  >
+                                    {badge === "Hot & New"
+                                      ? "Hot & New"
+                                      : badge}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Metrics Row */}
+                            <div className="flex items-center justify-between mb-2 sm:mb-3">
+                              {/* APY */}
+                              <div className="text-center">
+                                <p className="text-[#7e868c] text-xs mb-1">
+                                  APY
+                                </p>
+                                <p
+                                  className={`font-semibold text-xs sm:text-sm ${strategy.apyColor}`}
+                                >
+                                  {strategy.apy}
+                                </p>
+                              </div>
+
+                              {/* Risk */}
+                              <div className="text-center">
+                                <p className="text-[#7e868c] text-xs mb-1">
+                                  RISK
+                                </p>
+                                <div className="flex space-x-1">
+                                  <div className="text-center">
+                                    {strategy.isStrategy ? (
+                                      <div className="flex justify-center space-x-2">
+                                        <button className="p-1.5 font-bold hover:bg-[#e9e9e9] w-4 h-4 md:w-10 md:h-10 text-center rounded-lg bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#20282E] dark:to-[#121a21] backdrop-blur-md dark:text-white transition-all duration-200 hover:scale-105 shadow-lg">
+                                          —
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <div className="flex justify-center">
+                                        <div className="flex space-x-1.5">
+                                          {generateRiskBars(
+                                            strategy.riskScore || 60
+                                          )}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* TVL */}
+                              <div className="text-center">
+                                <p className="text-[#7e868c] text-xs mb-1">
+                                  TVL
+                                </p>
+                                <p className="font-semibold text-[#565E64] text-xs sm:text-sm">
+                                  {strategy.tvl}
                                 </p>
                               </div>
                             </div>
-
-                            {/* Verification and Badges */}
-                            <div className="flex items-center space-x-1 sm:space-x-2">
-                              <img
-                                src={strategy.verified}
-                                alt="verified"
-                                className="w-3 h-3 sm:w-4 sm:h-4"
-                              />
-                              {strategy.badges.map((badge, i) => (
-                                <Badge
-                                  key={i}
-                                  variant="secondary"
-                                  className="bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#10181D] dark:to-[#121A21] backdrop-blur-md dark:text-white shadow-sm text-[#10181D] text-xs px-1 sm:px-2 py-1"
-                                >
-                                  {badge === "Hot & New" ? "Hot & New" : badge}
-                                </Badge>
-                              ))}
-                            </div>
                           </div>
-
-                          {/* Metrics Row */}
-                          <div className="flex items-center justify-between mb-2 sm:mb-3">
-                            {/* APY */}
-                            <div className="text-center">
-                              <p className="text-[#7e868c] text-xs mb-1">APY</p>
-                              <p
-                                className={`font-semibold text-xs sm:text-sm ${strategy.apyColor}`}
-                              >
-                                {strategy.apy}
-                              </p>
-                            </div>
-
-                            {/* Risk */}
-                            <div className="text-center">
-                              <p className="text-[#7e868c] text-xs mb-1">
-                                RISK
-                              </p>
-                              <div className="flex space-x-1">
-                                <div className="text-center">
-                                  {strategy.isStrategy ? (
-                                    <div className="flex justify-center space-x-2">
-                                      <button className="p-1.5 font-bold hover:bg-[#e9e9e9] w-4 h-4 md:w-10 md:h-10 text-center rounded-lg bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#20282E] dark:to-[#121a21] backdrop-blur-md dark:text-white transition-all duration-200 hover:scale-105 shadow-lg">
-                                        —
-                                      </button>
-                                    </div>
-                                  ) : (
-                                    <div className="flex justify-center">
-                                      <div className="flex space-x-1.5">
-                                        {generateRiskBars(
-                                          strategy.riskScore || 60
-                                        )}
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* TVL */}
-                            <div className="text-center">
-                              <p className="text-[#7e868c] text-xs mb-1">TVL</p>
-                              <p className="font-semibold text-[#565E64] text-xs sm:text-sm">
-                                {strategy.tvl}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </Link>
-              ))}
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </Link>
+                ))}
             </div>
 
             {/* Pagination */}
@@ -1087,7 +1158,33 @@ export default function Dashboard() {
 
             {agentsError && (
               <div className="text-center py-8">
-                <p className="text-red-500">{agentsError}</p>
+                <div className="w-16 h-16 mx-auto mb-4 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
+                  <svg
+                    className="w-8 h-8 text-red-500"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+                    />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-[#1A2228] dark:text-[#EAEAEA] mb-2">
+                  Unable to Load Agents
+                </h3>
+                <p className="text-[#565E64] dark:text-[#95A0A6] text-sm mb-4 max-w-md">
+                  {agentsError}
+                </p>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="px-4 py-2 bg-[#1fadd8] text-white rounded-lg hover:bg-[#1a8bb8] transition-colors"
+                >
+                  Try Again
+                </button>
               </div>
             )}
 
