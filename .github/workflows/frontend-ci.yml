@@ -2,10 +2,10 @@ name: Frontend CI/CD
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
     paths: ["frontend/**"]
   pull_request:
-    branches: [main, develop]
+    branches: [main]
     paths: ["frontend/**"]
 
 env:
@@ -62,3 +62,7 @@ jobs:
       - name: Build
         working-directory: frontend
         run: pnpm run build
+
+      - name: Deploy
+        working-directory: frontend
+        run: pnpm run deploy

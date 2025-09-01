@@ -21,7 +21,9 @@
     "process:test": "cd ./contract && ./scripts/test.sh",
     "set-eval-data": "bun scripts/set-eval-data.js",
     "spawn-agent": "bun scripts/spawn-agent.js",
-    "sync-pools": "bun scripts/sync-pools.js"
+    "sync-pools": "bun scripts/sync-pools.js",
+    "upgrade-agents": "bun scripts/upgrade-agents.js",
+    "deploy": "cd frontend && pnpm run build && permaweb-deploy --deploy-folder ./frontend/dist  --arns-name $DEPLOY_ARNS_NAME"
   },
   "type": "module",
   "dependencies": {

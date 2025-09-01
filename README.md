@@ -91,6 +91,7 @@ RUN_INDEFINITELY=true START_DATE=$(date +%s) END_DATE=$(( $(date +%s) + 31536000
 PROCESS_ID=YOUR_MANAGER_ID LUA_PATH=./contract/build/main-process.lua \
 # Run the scripts
 bun run set-eval-data && bun run sync-pools && bun run spawn-agent
+
 ```
 
 ### Scripts wallet and IDs
@@ -130,31 +131,9 @@ aos new-manager
 
 This creates a new manager process and loads `manager.lua`. Keep the returned manager process id; set it in:
 - `frontend/src/constants/yao_process.ts` as `MANAGER_CONTRACT`
-- scripts via env (`MANAGER_PROCESS_ID`) for `set-eval-data` and `sync-pools`
+- scripts via env (`MANAGER_PROCESS_ID`) for `set-eval-data`, `sync-pools`, `upgrade-agents`
 
 Optional scripted flows exist in `contract/scripts/deploy-*.sh`, but the manual flow above matches the hackathon instructions.
-
----
-
-## Start services (local dev)
-
-1) Backend (Bun + Hono)
-
-```bash
-cd backend
-bun install
-bun run dev
-# Serves on http://localhost:3000
-```
-
-2) Frontend (React + Vite)
-
-```bash
-cd frontend
-bun install
-bun run dev
-# Vite dev server prints the local URL
-```
 
 ---
 
@@ -168,11 +147,15 @@ bun run set-eval-data
 
 # 2) Sync available pools into the manager from the local backend
 bun run sync-pools
+
+# 3) (Optional) Upgrade all existing agents with current evalData
+bun run upgrade-agents
 ```
 
 What they do:
 - `set-eval-data`: Sends `Set-Eval-Data` with the built agent (`main-process.lua`) to the manager.
 - `sync-pools`: Fetches `${BACKEND_URL:-http://localhost:3000}/pools`, transforms Botega pools (adds APY, risk) and sends `Set-Available-Pools` to the manager.
+- `upgrade-agents`: Sends `Upgrade-All-Agents` to the manager, which pushes `Eval` (from `evalData`) to all tracked agents.
 
 ---
 
@@ -214,6 +197,7 @@ The script prints the AO message id and session information returned by the mana
 - `bun run process:build` — Build agent and manager Lua into `contract/build/`
 - `bun run set-eval-data` — Push `main-process.lua` evaluator to the manager
 - `bun run sync-pools` — Fetch and push available pools to the manager
+- `bun run upgrade-agents` — Push current evalData to all tracked agents
 - `bun run spawn-agent` — Ask the manager to spawn a new agent with defaults
 
 ---
@@ -236,10 +220,3 @@ The script prints the AO message id and session information returned by the mana
 
 License: MIT
 
----
-
-## Open questions (please confirm for final README)
-
-- The upstream pools API for the backend: the exact `SOURCE_ROUTE` and any required `HEADERS_JSON` keys.
-- Whether to keep the default manager id in the repo or swap to your new deployment before submission.
-- Any additional processes you want documented (vault, token ids) for the judges.

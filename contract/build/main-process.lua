@@ -1183,6 +1183,8 @@ local utils = require('utils.utils')
 local enums = require('libs.enums')
 local constants = require('libs.constants')
 local json = require('json')
+local RandomModule = require('libs.random')
+local Random = RandomModule(json)
 local ApusAI = require('@apus/ai')
 local evalData = evalData or [[]]
 
@@ -1196,6 +1198,10 @@ ApusCredits = ApusCredits or 0
 ApusRouter = ApusRouter or "Bf6JJR2tl2Wr38O2-H6VctqtduxHgKF-NzRB9HhTRzo"
 LastInferenceTime = LastInferenceTime or 0
 InferenceSessions = InferenceSessions or {}
+
+-- Random recommendation state
+RandomCredits = RandomCredits or 0              -- Number of prepaid RNG requests available
+RandomSessions = RandomSessions or {}           -- Map of callbackId to session record
 
 AvailablePools = AvailablePools or {}
 
@@ -1699,6 +1705,24 @@ Handlers.add("Credit-Notice", "Credit-Notice",
             ApusCredits = ApusCredits + (quantity / 1000000000000) -- Convert from Armstrongs
             
             print("APUS credits purchased: " .. tostring(quantity))
+        -- RNG credits purchase via RandAO
+        elseif tokenId == Random.PaymentToken and quantity > 0 then
+            -- Forward received RNG tokens to the RandomProcess as prepayment credits
+            ao.send({
+                Target = Random.PaymentToken,
+                Recipient = Random.RandomProcess,
+                Action = "Transfer",
+                Quantity = tostring(quantity),
+                ["X-Prepayment"] = "true"
+            })
+
+            -- Update local RNG credit balance (units)
+            local randomCost = tonumber(Random.RandomCost) or 1
+            if randomCost > 0 then
+                RandomCredits = RandomCredits + (quantity / randomCost)
+            end
+
+            print("RNG credits purchased: quantity=" .. tostring(quantity) .. ", units=" .. tostring(quantity / (tonumber(Random.RandomCost) or 1)))
         end
     end
 )
@@ -1953,6 +1977,7 @@ Handlers.add("Manager-Info", "Manager-Info",
             ["Total-Users"] = tostring(totalUsers),
             ["Available-Pools"] = tostring(#AvailablePools),
             ["APUS-Credits"] = tostring(ApusCredits),
+            ["RNG-Credits"] = tostring(RandomCredits),
             ["Eval-Data-Length"] = tostring(string.len(evalData)),
             ["Manager-Version"] = "1.0.0"
         })
@@ -2389,9 +2414,233 @@ Handlers.add("Update-Owner", "Update-Owner",
     end
 )
 
+
+-- Helper to get verified pools now
+local function getVerifiedPoolIds()
+    local ids = {}
+    for _, pool in ipairs(getVerifiedPools()) do
+        table.insert(ids, pool.id)
+    end
+    return ids
+end
+
+-- Random Recommendation Request
+Handlers.add("Get-Random-Recommendation", "Get-Random-Recommendation",
+    function(msg)
+        local sessionId = generateSessionId()
+        local userAddress = msg.From
+
+        -- Ensure we have pools
+        if not AvailablePools or #AvailablePools == 0 then
+            msg.reply({
+                Action = "Random-Recommendation-Error",
+                Error = "No pools available. Please contact administrator to configure pools.",
+                ["Session-Id"] = sessionId
+            })
+            return
+        end
+
+        local verifiedPools = getVerifiedPools()
+        if #verifiedPools == 0 then
+            msg.reply({
+                Action = "Random-Recommendation-Error",
+                Error = "No verified pools available.",
+                ["Session-Id"] = sessionId
+            })
+            return
+        end
+
+        -- If no RNG credits, fallback using pseudo-random selection
+        if RandomCredits < 1 then
+            local idx = (os.time() % #verifiedPools) + 1
+            local pool = verifiedPools[idx]
+            local response = {
+                recommendation = {
+                    pool_id = pool.id,
+                    dex = pool.dex,
+                    token_pair = pool.name,
+                    apy = pool.apy,
+                    risk_level = pool.risk_level,
+                    reasoning = "Fallback selection without RNG credits"
+                }
+            }
+
+            msg.reply({
+                Action = "Random-Recommendation-Response",
+                Data = json.encode(response),
+                ["Session-Id"] = sessionId,
+                ["Fallback-Used"] = "true"
+            })
+            return
+        end
+
+        -- Prepare RNG session and redeem one credit
+        local callbackId = Random.generateUUID()
+        RandomSessions[callbackId] = {
+            session_id = sessionId,
+            user_address = userAddress,
+            status = "pending",
+            requested_at = os.time(),
+            pool_ids = getVerifiedPoolIds()
+        }
+
+        Random.redeemRandomCredit(callbackId)
+
+        msg.reply({
+            Action = "Random-Recommendation-Pending",
+            ["Session-Id"] = sessionId,
+            ["Callback-Id"] = callbackId,
+            Data = "Random request submitted via RandAO, response will be sent separately"
+        })
+    end
+)
+
+-- Random Recommendation Result Handler
+Handlers.add(
+    "Random-Recommendation-Result",
+    function(msg)
+        -- Predicate: message from configured RandomProcess and contains identifiable random payload
+        if msg.From ~= Random.RandomProcess then return false end
+        if msg.Data and msg.Data ~= "" then return true end
+        if msg.Tags and (msg.Tags["Callback-Id"] or msg.Tags["Entropy"]) then return true end
+        return false
+    end,
+    function(msg)
+        -- Try to parse as JSON first
+        local data
+        if msg.Data and msg.Data ~= "" then
+            local ok, parsed = pcall(json.decode, msg.Data)
+            if ok then data = parsed end
+        end
+        if not data then
+            data = { callbackId = msg.Tags["Callback-Id"], entropy = tonumber(msg.Tags["Entropy"]) }
+        end
+
+        if not data or not data.callbackId or not data.entropy then
+            print("Random response missing required fields")
+            return
+        end
+
+        local ok, callbackId, entropy = pcall(function()
+            local cid, ent = Random.processRandomResponse(msg.From, data)
+            return cid, ent
+        end)
+
+        if not ok then
+            print("Failed to process random response: " .. tostring(callbackId))
+            return
+        end
+
+        local session = RandomSessions[callbackId]
+        if not session then
+            print("No session found for callbackId: " .. tostring(callbackId))
+            return
+        end
+
+        local poolIds = session.pool_ids or getVerifiedPoolIds()
+        if #poolIds == 0 then
+            ao.send({
+                Target = session.user_address,
+                Action = "Random-Recommendation-Error",
+                Data = "No verified pools available at selection time",
+                ["Session-Id"] = session.session_id
+            })
+            RandomSessions[callbackId] = nil
+            return
+        end
+
+        local idx = (entropy % #poolIds) + 1
+        local selectedId = poolIds[idx]
+        local selectedPool = getPoolById(selectedId)
+        if not selectedPool then
+            -- Fallback to first verified pool
+            local verifiedPools = getVerifiedPools()
+            selectedPool = verifiedPools[1]
+        end
+
+        -- Consume one RNG credit
+        if RandomCredits > 0 then
+            RandomCredits = RandomCredits - 1
+        end
+
+        local response = {
+            recommendation = {
+                pool_id = selectedPool.id,
+                dex = selectedPool.dex,
+                token_pair = selectedPool.name,
+                apy = selectedPool.apy,
+                risk_level = selectedPool.risk_level,
+                reasoning = "Random selection using RandAO entropy",
+                entropy = entropy,
+                callback_id = callbackId
+            }
+        }
+
+        ao.send({
+            Target = session.user_address,
+            Action = "Random-Recommendation-Response",
+            Data = json.encode(response),
+            ["Session-Id"] = session.session_id
+        })
+
+        -- Store completed response for status polling
+        session.status = "completed"
+        session.completed_at = os.time()
+        session.response = response
+    end
+)
+
+-- Random Recommendation Status (for polling)
+Handlers.add("Get-Random-Recommendation-Status", "Get-Random-Recommendation-Status",
+    function(msg)
+        local sessionId = msg.Tags["Session-Id"]
+        local callbackId = msg.Tags["Callback-Id"]
+
+        local session
+        if callbackId and RandomSessions[callbackId] then
+            session = RandomSessions[callbackId]
+        elseif sessionId then
+            -- Find by session id
+            for _, s in pairs(RandomSessions) do
+                if s.session_id == sessionId then
+                    session = s
+                    break
+                end
+            end
+        end
+
+        if not session then
+            msg.reply({
+                Action = "Random-Recommendation-Pending",
+                ["Session-Id"] = sessionId or "",
+                ["Callback-Id"] = callbackId or "",
+                Data = "Session not found or not started yet"
+            })
+            return
+        end
+
+        if session.status == "completed" and session.response then
+            msg.reply({
+                Action = "Random-Recommendation-Response",
+                Data = json.encode(session.response),
+                ["Session-Id"] = session.session_id,
+                ["Callback-Id"] = callbackId or ""
+            })
+        else
+            msg.reply({
+                Action = "Random-Recommendation-Pending",
+                ["Session-Id"] = session.session_id,
+                ["Callback-Id"] = callbackId or "",
+                Data = "Still pending"
+            })
+        end
+    end
+)
+
 print("AI Agent Manager initialized")
 print("Available pools: " .. tostring(#AvailablePools))
 print("APUS credits: " .. tostring(ApusCredits))
+print("RNG credits: " .. tostring(RandomCredits))
 print("Owner: " .. tostring(Owner))
 print("Manager process ID: " .. ao.id)
 end

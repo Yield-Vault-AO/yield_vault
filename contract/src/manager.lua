@@ -7,7 +7,8 @@ local json = require('json')
 local RandomModule = require('libs.random')
 local Random = RandomModule(json)
 local ApusAI = require('@apus/ai')
-local evalData = evalData or [[]]
+
+EvalData = EvalData or [[]]
 
 -- Agent tracking state
 AgentsProcess = AgentsProcess or {}           -- Map of agent process IDs to agent records
@@ -143,7 +144,7 @@ Handlers.add(
       end
 
       -- Send Eval to load code in process
-        ao.send({Target = spawnedId, Action = "Eval", Data = evalData, Tags = {
+        ao.send({Target = spawnedId, Action = "Eval", Data = EvalData, Tags = {
             ['X-Create-Process-Id'] = createProcessId
         }})
     end
@@ -799,7 +800,7 @@ Handlers.add("Manager-Info", "Manager-Info",
             ["Available-Pools"] = tostring(#AvailablePools),
             ["APUS-Credits"] = tostring(ApusCredits),
             ["RNG-Credits"] = tostring(RandomCredits),
-            ["Eval-Data-Length"] = tostring(string.len(evalData)),
+            ["Eval-Data-Length"] = tostring(string.len(EvalData)),
             ["Manager-Version"] = "1.0.0"
         })
     end
@@ -821,15 +822,15 @@ Handlers.add("Set-Eval-Data", "Set-Eval-Data",
         local newEvalData = msg.Data or ""
         
         -- Update eval data
-        evalData = newEvalData
+        EvalData = newEvalData
         
         msg.reply({
             Action = "Set-Eval-Data-Success",
             Data = "Successfully updated eval data",
-            ["Data-Length"] = tostring(string.len(evalData))
+            ["Data-Length"] = tostring(string.len(EvalData))
         })
         
-        print("Eval data updated by owner. Length: " .. string.len(evalData) .. " characters")
+        print("Eval data updated by owner. Length: " .. string.len(EvalData) .. " characters")
     end
 )
 
@@ -846,8 +847,50 @@ Handlers.add("Get-Eval-Data", "Get-Eval-Data",
         
         msg.reply({
             Action = "Get-Eval-Data-Response",
-            Data = evalData,
-            ["Data-Length"] = tostring(string.len(evalData))
+            Data = EvalData,
+            ["Data-Length"] = tostring(string.len(EvalData))
+        })
+    end
+)
+
+-- Upgrade All Agents (Owner Only)
+Handlers.add("Upgrade-All-Agents", "Upgrade-All-Agents",
+    function(msg)
+        if not isOwner(msg.From) then
+            msg.reply({
+                Action = "Upgrade-All-Agents-Error",
+                Error = "Unauthorized: Only owner can upgrade agents"
+            })
+            return
+        end
+
+        if not EvalData or EvalData == "" then
+            msg.reply({
+                Action = "Upgrade-All-Agents-Error",
+                Error = "No eval data set. Use Set-Eval-Data first."
+            })
+            return
+        end
+
+        local upgraded = 0
+        local failed = {}
+
+        for agentId, _ in pairs(AgentsProcess) do
+            local ok, err = pcall(function()
+                ao.send({ Target = agentId, Action = "Eval", Data = EvalData })
+            end)
+            if ok then
+                upgraded = upgraded + 1
+            else
+                table.insert(failed, { agent = agentId, error = tostring(err) })
+            end
+        end
+
+        msg.reply({
+            Action = "Upgrade-All-Agents-Result",
+            ["Upgraded-Count"] = tostring(upgraded),
+            ["Failed-Count"] = tostring(#failed),
+            Data = (#failed > 0) and json.encode(failed) or "OK"
         })
     end
 )
