@@ -1,9 +1,9 @@
 export const config = {
   // AO Network Configuration
-  aoProcessId: "3U6DE9lLfIzroUTwzgLd7Ukoc4NUGe5ozOz8cg15vvQ", // TODO: Replace with your AO process ID
+  aoProcessId: import.meta.env.VITE_APUS_AO_PROCESS_ID || "3U6DE9lLfIzroUTwzgLd7Ukoc4NUGe5ozOz8cg15vvQ", // TODO: Replace with your AO process ID
 
   // APUS HyperBEAM Node Configuration
-  apusHyperbeamNodeUrl: "http://72.46.85.207:8734",
+  apusHyperbeamNodeUrl: import.meta.env.VITE_APUS_HYPERBEAM_URL || "http://72.46.85.207:8734",
 
   // App Configuration
   appName: "Yao",

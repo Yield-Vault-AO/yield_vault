@@ -3,8 +3,9 @@
 import { readFileSync } from 'fs';
 import { createDataItemSigner, message, result as resresult } from '@permaweb/aoconnect';
 
+const walletPath = process.env.WALLET_PATH || "./wallet.json";
 const wallet = JSON.parse(
-    readFileSync("./wallet.json").toString(),
+    readFileSync(walletPath).toString(),
 );
 
 // Helper functions to determine token types (from Dashboard.tsx)
@@ -121,12 +122,13 @@ const transformPoolData = (rawPool) => {
 async function syncPools() {
     try {
         // Get manager process ID from environment or command line args
-        const managerProcessId = "CAT2qDMSaOFO1eXsYpKcitU2S-b31nW076_-q814RHM" //process.env.MANAGER_PROCESS_ID || process.argv[2] || "CAT2qDMSaOFO1eXsYpKcitU2S-b31nW076_-q814RHM";
+        const managerProcessId = process.env.MANAGER_PROCESS_ID || process.env.PROCESS_ID || process.argv[2] || "CAT2qDMSaOFO1eXsYpKcitU2S-b31nW076_-q814RHM";
 
-        console.log('Fetching pools from localhost:3000/pools...');
+        const backendUrl = process.env.BACKEND_URL || process.env.API_BASE || 'http://localhost:3000';
+        console.log(`Fetching pools from ${backendUrl}/pools...`);
 
         // Fetch pools from API
-        const response = await fetch('http://localhost:3000/pools');
+        const response = await fetch(`${backendUrl}/pools`);
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
@@ -203,7 +205,7 @@ async function syncPools() {
 // Add some helpful information
 console.log('Pool Sync Script');
 console.log('================');
-console.log('This script fetches pool data from localhost:3000/pools and syncs it with the AO manager process.');
+console.log('This script fetches pool data from BACKEND_URL (default http://localhost:3000)/pools and syncs it with the AO manager process.');
 console.log('It transforms the data to match the manager\'s expected format and filters for valid Botega pools.\n');
 
 syncPools();

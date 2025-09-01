@@ -4,20 +4,19 @@ import { readFileSync } from 'fs';
 import { connect, createDataItemSigner, message } from '@permaweb/aoconnect';
 
 const ao = connect();
+const walletPath = process.env.WALLET_PATH || "./wallet.json";
 const wallet = JSON.parse(
-    readFileSync("./wallet.json").toString(),
+    readFileSync(walletPath).toString(),
   );
   
 async function setEvalData() {
     try {
         // Read the main-process.lua file
-        const luaContent = readFileSync('./contract/build/main-process.lua', 'utf8');
-
-        // Parse the content as [[ "the content of the file" ]]
-        const parsedContent = `[[ ${luaContent} ]]`;
+        const luaPath = process.env.LUA_PATH || './contract/build/main-process.lua';
+        const luaContent = readFileSync(luaPath, 'utf8');
         
         // Get process ID from environment or command line args
-        const processId = "CAT2qDMSaOFO1eXsYpKcitU2S-b31nW076_-q814RHM" //process.env.PROCESS_ID || process.argv[2];
+        const processId = process.env.PROCESS_ID || process.env.MANAGER_PROCESS_ID || process.argv[2] || "CAT2qDMSaOFO1eXsYpKcitU2S-b31nW076_-q814RHM";
 
         if (!processId) {
             console.error('Error: Please provide a process ID via PROCESS_ID environment variable or as a command line argument');
