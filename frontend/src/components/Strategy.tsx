@@ -21,7 +21,7 @@ import { usePools } from "../contexts/PoolContext";
 import { AO_TOKEN } from "../constants/yao_process";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import React from "react";
-import { getTokenInfo, formatTokenBalance } from "../helpers/token";
+import { getTokenInfo, formatTokenBalance, convertHumanAmountToBaseUnits } from "../helpers/token";
 // import user_circle from "../../public/user-circle.svg";
 import {
   getUserAgents,
@@ -277,12 +277,13 @@ export default function StrategyDetail() {
       }
 
       const baseTokenProcess = determineBaseToken(pool);
+      const quantity = await convertHumanAmountToBaseUnits(baseTokenProcess, depositAmount);
       const messageId = await message({
         process: baseTokenProcess,
         tags: [
           { name: "Action", value: "Transfer" },
           { name: "Recipient", value: relevantAgent.process_id },
-          { name: "Quantity", value: depositAmount },
+          { name: "Quantity", value: quantity.toString() },
         ],
         data: "",
         signer: createDataItemSigner(window.arweaveWallet),

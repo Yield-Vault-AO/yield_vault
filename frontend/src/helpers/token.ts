@@ -149,3 +149,34 @@ export async function formatTokenBalance(
     const num = formatQuantityWithDenomination(rawQuantity, info.denomination, options)
     return options?.includeTicker === false ? num : `${num} ${info.ticker}`
 }
+
+// Parse a human input like "1234.567" into base units bigint using denomination
+export function parseHumanAmountToBaseUnits(
+    humanAmount: string,
+    denomination: number,
+): bigint {
+    if (!humanAmount) return 0n
+    const cleaned = humanAmount.trim().replace(/,/g, "")
+    if (!/^\d*(?:\.\d*)?$/.test(cleaned)) return 0n
+    const [intPartRaw, fracRaw = ""] = cleaned.split(".")
+    const intPart = intPartRaw === "" ? "0" : intPartRaw
+    const fracLimited = fracRaw.slice(0, Math.max(0, denomination))
+    const fracPadded = fracLimited.padEnd(Math.max(0, denomination), "0")
+    const base = 10n ** BigInt(Math.max(0, denomination))
+    try {
+        const intBig = BigInt(intPart)
+        const fracBig = fracPadded ? BigInt(fracPadded) : 0n
+        return intBig * base + fracBig
+    } catch {
+        return 0n
+    }
+}
+
+// Convenience: convert human amount for a token id using its denomination
+export async function convertHumanAmountToBaseUnits(
+    tokenProcessId: string,
+    humanAmount: string,
+): Promise<bigint> {
+    const info = await getCachedTokenInfo(tokenProcessId)
+    return parseHumanAmountToBaseUnits(humanAmount, info.denomination)
+}

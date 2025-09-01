@@ -18,7 +18,7 @@ import {
 import { createDataItemSigner, message, result } from "@permaweb/aoconnect";
 import { AO_TOKEN } from "../constants/yao_process";
 import { getTokenBalance } from "../services/aoService";
-import { formatTokenBalance } from "../helpers/token";
+import { formatTokenBalance, convertHumanAmountToBaseUnits } from "../helpers/token";
 
 export default function Agent() {
   const { id } = useParams<{ id: string }>();
@@ -77,12 +77,13 @@ export default function Agent() {
     setTransferError(null);
     try {
       const baseToken = determineBaseToken();
+      const quantity = await convertHumanAmountToBaseUnits(baseToken, depositAmount);
       const messageId = await message({
         process: baseToken,
         tags: [
           { name: "Action", value: "Transfer" },
           { name: "Recipient", value: agentId },
-          { name: "Quantity", value: depositAmount },
+          { name: "Quantity", value: quantity.toString() },
         ],
         data: "",
         signer: createDataItemSigner(window.arweaveWallet),
