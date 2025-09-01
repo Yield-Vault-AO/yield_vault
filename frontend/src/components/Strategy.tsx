@@ -21,7 +21,7 @@ import { usePools } from "../contexts/PoolContext";
 import { AO_TOKEN } from "../constants/yao_process";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import React from "react";
-import { getTokenInfo } from "../helpers/token";
+import { getTokenInfo, formatTokenBalance } from "../helpers/token";
 // import user_circle from "../../public/user-circle.svg";
 import {
   getUserAgents,
@@ -203,7 +203,8 @@ export default function StrategyDetail() {
         const baseToken = determineBaseToken(pool);
         if (baseToken) {
           const bal = await getTokenBalance(baseToken, userAddress);
-          setBaseTokenBalance(bal);
+          const formatted = await formatTokenBalance(baseToken, bal, { maxFractionDigits: 6 });
+          setBaseTokenBalance(formatted);
         }
       } catch {
         console.error("Failed to fetch user agents:")
