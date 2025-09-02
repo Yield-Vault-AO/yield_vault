@@ -9,7 +9,8 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "tsc": "tsc --noEmit",
     "preview": "vite preview",
-    "test-ci": "../test-ci.sh"
+    "test-ci": "../test-ci.sh",
+    "deploy": "pnpm run build && permaweb-deploy --deploy-folder ./dist --arns-name $DEPLOY_ARNS_NAME"
   },
   "dependencies": {
     "@arweave-wallet-kit/browser-wallet-strategy": "^0.1.1",
