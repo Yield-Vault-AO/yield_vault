@@ -124,7 +124,7 @@ async function syncPools() {
         // Get manager process ID from environment or command line args
         const managerProcessId = process.env.MANAGER_PROCESS_ID || process.env.PROCESS_ID || process.argv[2] || "CAT2qDMSaOFO1eXsYpKcitU2S-b31nW076_-q814RHM";
 
-        const backendUrl = process.env.BACKEND_URL || process.env.API_BASE || 'http://localhost:3000';
+        const backendUrl = process.env.BACKEND_URL || process.env.API_BASE || 'https://yield-pools.apps.ikem.dev';
         console.log(`Fetching pools from ${backendUrl}/pools...`);
 
         // Fetch pools from API

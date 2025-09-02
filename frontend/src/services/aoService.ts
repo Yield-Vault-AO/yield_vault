@@ -12,7 +12,7 @@ import type {
 } from "../components/recommendation/types";
 
 // Backend API configuration
-const API_BASE = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
+const API_BASE = import.meta.env.VITE_BACKEND_URL || "https://yield-pools.apps.ikem.dev";
 
 export interface AIRecommendation {
   pool_id: string;

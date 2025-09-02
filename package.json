@@ -12,6 +12,8 @@
   },
   "license": "MIT",
   "scripts": {
+    "start:backend": "cd ./backend && bun server.js",
+    "start:frontend": "cd ./frontend && bun run dev",
     "process:build": "cd ./contract && ./scripts/build.sh",
     "process:build:main": "cd ./contract && ./scripts/build-main.sh",
     "process:build:manager": "cd ./contract && ./scripts/build-manager.sh",

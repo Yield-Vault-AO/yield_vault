@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "bun run --hot index.ts",
     "build": "bun build --minify --target=bun index.ts --outfile=server.js",
-    "start": "bun index.ts"
+    "start": "bun server.js"
   },
   "devDependencies": {
     "@types/bun": "latest"

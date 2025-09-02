@@ -100,7 +100,7 @@ export function PoolProvider({ children }: { children: ReactNode }) {
     setError(null);
 
     try {
-      const API_BASE = "http://localhost:3000";
+      const API_BASE = "https://yield-pools.apps.ikem.dev";
       const response = await fetch(`${API_BASE}/pools`);
 
       if (!response.ok) {
