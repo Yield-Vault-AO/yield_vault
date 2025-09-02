@@ -10,7 +10,7 @@
     "tsc": "tsc --noEmit",
     "preview": "vite preview",
     "test-ci": "../test-ci.sh",
-    "deploy": "pnpm run build && DEPLOY_KEY=$WALLET_JSON permaweb-deploy --deploy-folder ./dist --arns-name $DEPLOY_ARNS_NAME"
+    "deploy": "pnpm run build && permaweb-deploy --deploy-folder ./dist --arns-name $DEPLOY_ARNS_NAME"
   },
   "dependencies": {
     "@arweave-wallet-kit/browser-wallet-strategy": "^0.1.1",
