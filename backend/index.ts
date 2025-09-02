@@ -22,6 +22,7 @@ app.get("/pools", async (c) => {
   const headersJson = Bun.env.HEADERS_JSON;
 
   if (!sourceRoute || !headersJson) {
+    console.log("misconfigured: ", sourceRoute, headersJson);
     return c.json({ error: "misconfigured" }, 400);
   }
 
@@ -39,6 +40,7 @@ app.get("/pools", async (c) => {
   try {
     headersObj = JSON.parse(headersJson);
   } catch {
+    console.log("misconfigured: ", headersJson);
     return c.json({ error: "misconfigured" }, 400);
   }
   if (
