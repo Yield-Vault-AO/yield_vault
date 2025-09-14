@@ -28,6 +28,10 @@ interface Pool {
   token0_current_price?: number;
   token1_current_price?: number;
   id?: string;
+  // Normalized fields from backend augmentations
+  apy_pct?: number;
+  external_url?: string;
+  protocol?: string;
   // Additional properties used in Strategy component
   nextHarvest?: {
     days?: string | number;
@@ -41,7 +45,7 @@ interface Pool {
 }
 
 // Strategy interface for processed pool data - ONLY using real data properties
-interface Strategy {
+export interface Strategy {
   id: string;
   name: string;
   token_icon: string;
@@ -68,6 +72,7 @@ interface Strategy {
   token1_name?: string;
   token0_current_price?: number;
   token1_current_price?: number;
+  external_url?: string;
   // Additional properties for UI display
   walletBalance?: string | number;
 }
@@ -100,7 +105,9 @@ export function PoolProvider({ children }: { children: ReactNode }) {
     setError(null);
 
     try {
-      const API_BASE = "https://yield-pools.apps.ikem.dev";
+      const API_BASE =
+        import.meta.env?.VITE_POOLS_API_BASE ||
+        "https://yield-pools.apps.ikem.dev";
       const response = await fetch(`${API_BASE}/pools`);
 
       if (!response.ok) {
@@ -172,13 +179,15 @@ export function PoolProvider({ children }: { children: ReactNode }) {
         const vol = Number(pool?.volume_usd) || 0;
         const liq = Number(pool?.liquidity_usd) || 0;
         const feeBps = Number(pool?.pool_fee_bps) || 0;
-        let apyPct = 0;
-
-        if (liq && feeBps) {
-          const feeRate = feeBps / 10000;
-          const daily = (vol / liq) * feeRate;
-          const annual = daily * 365;
-          apyPct = Math.max(0, annual) * 100;
+        // Prefer backend provided APY/APR pct if available (e.g., LiquidOps)
+        let apyPct = Number(pool?.apy_pct) || 0;
+        if (!apyPct) {
+          if (liq && feeBps) {
+            const feeRate = feeBps / 10000;
+            const daily = (vol / liq) * feeRate;
+            const annual = daily * 365;
+            apyPct = Math.max(0, annual) * 100;
+          }
         }
 
         // Calculate risk (simplified version)
@@ -198,14 +207,16 @@ export function PoolProvider({ children }: { children: ReactNode }) {
             `${pool.token0_ticker || ""}-${pool.token1_ticker || ""}`,
           name:
             pool.amm_name ||
-            `${pool.token0_ticker || pool.token0_name}/${
+            `${pool.token0_ticker || pool.token0_name}/$${
               pool.token1_ticker || pool.token1_name
             }`,
           token_icon: "", // Will be set by components that need logos
           token_icon2: "", // Will be set by components that need logos
           verified: "", // Will be set by components
           protocol:
-            (pool.amm_name && String(pool.amm_name).split(" ")[0]) || "Botega",
+            pool.protocol ||
+            ((pool.amm_name && String(pool.amm_name).split(" ")[0]) as string) ||
+            "Botega",
           protocol_icon: "", // Will be set by components
           apy: fmtPct(apyPct),
           apyColor: apyPct >= 0 ? "text-blue-500" : "text-red-500",
@@ -226,6 +237,7 @@ export function PoolProvider({ children }: { children: ReactNode }) {
           token1_name: pool.token1_name,
           token0_current_price: pool.token0_current_price,
           token1_current_price: pool.token1_current_price,
+          external_url: pool.external_url,
         };
       })
       .filter((strategy) => {
@@ -242,6 +254,12 @@ export function PoolProvider({ children }: { children: ReactNode }) {
   const calculateRisk = (
     pool: Pool
   ): { risk: "low" | "medium" | "high"; score: number } => {
+    // Treat LiquidOps supply pools safe
+    const proto = (pool.protocol || pool.amm_name || "").toLowerCase().replace(/\s+/g, "");
+    if (proto.includes("liquidops")) {
+      return { risk: "low", score: 80 };
+    }
+
     const token0Stable = isStableToken(pool.token0_ticker, pool.token0_name);
     const token1Stable = isStableToken(pool.token1_ticker, pool.token1_name);
     const token0AO = isAOToken(pool.token0_ticker, pool.token0_name);

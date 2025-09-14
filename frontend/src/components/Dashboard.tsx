@@ -1,51 +1,26 @@
 "use client";
 
 import { getTokenInfo } from "../helpers/token";
-import dashboard_grid from "../../public/graph_main_stra.svg";
-import dashboard_grid_dark from "../../public/background_grid_dark.svg";
-import yao_text from "../../public/YAO.svg";
-import yao_text_white from "../../public/yao_text_white.svg";
 import { useTheme } from "../hooks/useTheme";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
-import ao_logo from "../../public/ao_logo.svg";
-// import stEth from "../../public/stETH 2.svg";
-// import dai from "../../public/DAI 1.svg";
-import help_circle from "../../public/help-circle.svg";
-import filter from "../../public/filter.svg";
-import user_circle from "../../public/user-circle.svg";
-import verified from "../../public/verified.svg";
 import DashboardFooter from "./dashboard/dashboard_footer";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { RecommendButton } from "./recommendation";
 import { getRandomRecommendationPoolId } from "../services/aoService";
 import { usePools } from "../contexts/PoolContext";
 import { getUserAgents, type AgentRecord } from "../services/aoService";
-
-// Minimal pool type used by the UI
-interface Pool {
-  amm_name?: string;
-  amm_process?: string;
-  token0?: string;
-  token1?: string;
-  token0_ticker?: string;
-  token1_ticker?: string;
-  token0_name?: string;
-  token1_name?: string;
-  pool_fee_bps?: number;
-  volume_usd?: number;
-  liquidity_usd?: number;
-  market_cap?: number;
-  token0_current_price?: number;
-  token1_current_price?: number;
-}
+import type { Strategy as StrategyType } from "../contexts/PoolContext";
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState("strategies");
   // const [currentPage, setCurrentPage] = useState(1);
   const theme = useTheme();
+  const [protocolFilter, setProtocolFilter] = useState<
+    "All" | "Dexi" | "Botega" | "Permaswap" | "Liquid Ops"
+  >("All");
 
   // Use global pool state instead of local state
   const {
@@ -75,6 +50,11 @@ export default function Dashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const strategiesPerPage = 15;
 
+  // Reset pagination when tab or protocol filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, protocolFilter]);
+
   // Function to fetch token logo
   const fetchTokenLogo = useCallback(
     async (tokenId: string) => {
@@ -93,7 +73,7 @@ export default function Dashboard() {
         // Use fallback logo on error
         setTokenLogos((prev) => ({
           ...prev,
-          [tokenId]: ao_logo,
+          [tokenId]: "/ao_logo.svg",
         }));
       } finally {
         setLogoLoading((prev) => {
@@ -125,8 +105,8 @@ export default function Dashboard() {
   // Helper function to get token logo with fallback
   const getTokenLogo = useCallback(
     (tokenId?: string): string => {
-      if (!tokenId) return ao_logo;
-      return tokenLogos[tokenId] || ao_logo;
+      if (!tokenId) return "/ao_logo.svg";
+      return tokenLogos[tokenId] || "/ao_logo.svg";
     },
     [tokenLogos]
   );
@@ -171,81 +151,6 @@ export default function Dashboard() {
       console.error("Random recommendation error:", randomError);
     }
   }, [randomError]);
-
-  const isStableToken = useMemo(
-    () =>
-      (ticker?: string, name?: string): boolean => {
-        if (!ticker && !name) return false;
-        const tokenStr = `${ticker || ""} ${name || ""}`.toLowerCase();
-        return (
-          tokenStr.includes("usd") ||
-          tokenStr.includes("dai") ||
-          tokenStr.includes("usdt") ||
-          tokenStr.includes("usdc")
-        );
-      },
-    []
-  );
-
-  const isAOToken = useMemo(
-    () =>
-      (ticker?: string, name?: string): boolean => {
-        if (!ticker && !name) return false;
-        const tokenStr = `${ticker || ""} ${name || ""}`.toLowerCase();
-        return tokenStr.includes("ao") || tokenStr.includes("war");
-      },
-    []
-  );
-
-  const isGameToken = useMemo(
-    () =>
-      (ticker?: string, name?: string): boolean => {
-        if (!ticker && !name) return false;
-        const tokenStr = `${ticker || ""} ${name || ""}`.toLowerCase();
-        return tokenStr.includes("game") || Boolean(name?.includes("Game"));
-      },
-    []
-  );
-
-  const calculateRisk = useMemo(
-    () =>
-      (pool: Pool): { risk: "low" | "medium" | "high"; score: number } => {
-        const token0Stable = isStableToken(
-          pool.token0_ticker,
-          pool.token0_name
-        );
-        const token1Stable = isStableToken(
-          pool.token1_ticker,
-          pool.token1_name
-        );
-        const token0AO = isAOToken(pool.token0_ticker, pool.token0_name);
-        const token1AO = isAOToken(pool.token1_ticker, pool.token1_name);
-        const token0Game = isGameToken(pool.token0_ticker, pool.token0_name);
-        const token1Game = isGameToken(pool.token1_ticker, pool.token1_name);
-
-        if (
-          (token0Stable && token1AO) ||
-          (token1Stable && token0AO) ||
-          token0Game ||
-          token1Game ||
-          (token0Stable && token1Stable)
-        ) {
-          return { risk: "low", score: 80 };
-        }
-
-        if ((token0Stable || token1Stable) && (token0AO || token1AO)) {
-          return { risk: "low", score: 60 };
-        }
-
-        if (token0Stable || token1Stable) {
-          return { risk: "medium", score: 40 };
-        }
-
-        // Default high risk
-        return { risk: "high", score: 20 };
-      },
-    [isStableToken, isAOToken, isGameToken]
-  );
 
   // Fetch agents when agents tab is active
   useEffect(() => {
@@ -293,28 +198,6 @@ export default function Dashboard() {
     fetchAgents();
   }, [activeTab]);
 
-  const deriveApyPct = useMemo(
-    () =>
-      (pool: Pool): number => {
-        const vol = Number(pool?.volume_usd) || 0;
-        const liq = Number(pool?.liquidity_usd) || 0;
-        const feeBps = Number(pool?.pool_fee_bps) || 0;
-        if (!liq || !feeBps) return 0;
-        const feeRate = feeBps / 10000; // e.g., 25 bps => 0.0025
-        const daily = (vol / liq) * feeRate; // daily yield estimate
-        const annual = daily * 365;
-        return Math.max(0, annual) * 100; // percent
-      },
-    []
-  );
-
-  const fmtPct = useMemo(
-    () =>
-      (v: number): string =>
-        `${v.toFixed(2)}%`,
-    []
-  );
-
   const fmtUSD = useMemo(
     () =>
       (v: number): string =>
@@ -325,6 +208,26 @@ export default function Dashboard() {
           : `$${v.toFixed(2)}`,
     []
   );
+
+  // Composite score factoring rating and yield
+  const compositeScore = useCallback((apyPct: number, riskScore: number) => {
+    const apy = Math.max(0, Number(apyPct) || 0);
+    const risk = Math.max(0, Math.min(100, Number(riskScore) || 0)) / 100;
+    return apy * risk;
+  }, []);
+
+  const parseApyPct = useCallback((apy: string | number | undefined) => {
+    if (typeof apy === "number") return apy;
+    if (!apy) return 0;
+    const n = Number(String(apy).replace("%", "").trim());
+    return Number.isFinite(n) ? n : 0;
+  }, []);
+
+  const stripBotegaLP = useCallback((name?: string) => {
+    if (!name) return "";
+    // Remove prefix like: "Botega LP ", case-insensitive, with optional NBSP
+    return name.replace(/^\s*botega[\s\u00A0]*lp[\s\u00A0]*/i, "");
+  }, []);
 
   // Function to generate risk bars based on risk score
   const generateRiskBars = useMemo(
@@ -376,19 +279,45 @@ export default function Dashboard() {
         return {
           ...strategy,
           token_icon: getTokenLogo(pool?.token0),
-          token_icon2: getTokenLogo(pool?.token1),
-          verified: verified,
-          protocol_icon: user_circle,
+          token_icon2: pool?.token1 ? getTokenLogo(pool?.token1) : "",
+          verified: "/verified.svg",
+          protocol_icon: "/user-circle.svg",
         };
       }),
     [strategies, pools, getTokenLogo]
   );
 
-  // Pagination logic
-  const totalPages = Math.ceil(fetchedStrategies.length / strategiesPerPage);
+  const normalize = (s?: string) => (s || "").toLowerCase().replace(/\s+/g, "");
+  const filteredStrategies = useMemo(() => {
+    if (protocolFilter === "All") return fetchedStrategies;
+    const target = normalize(protocolFilter);
+    return fetchedStrategies.filter((s: { protocol?: string }) =>
+      normalize(s.protocol) === target
+    );
+  }, [fetchedStrategies, protocolFilter]);
+
+  // Sort by highest APY for Find Yields tab; keep context-provided order for Strategies tab
+  const sortedStrategies = useMemo(() => {
+    const arr: StrategyType[] = [...filteredStrategies];
+    if (activeTab === "find-yields") {
+      arr.sort((a: StrategyType, b: StrategyType) => {
+        const apyA = parseApyPct(a.apy);
+        const apyB = parseApyPct(b.apy);
+        const riskA = Number(a.riskScore || 0);
+        const riskB = Number(b.riskScore || 0);
+        const scoreA = compositeScore(apyA, riskA);
+        const scoreB = compositeScore(apyB, riskB);
+        return scoreB - scoreA;
+      });
+    }
+    return arr;
+  }, [filteredStrategies, activeTab, parseApyPct, compositeScore]);
+
+  // Pagination logic on filtered list
+  const totalPages = Math.ceil(sortedStrategies.length / strategiesPerPage);
   const startIndex = (currentPage - 1) * strategiesPerPage;
   const endIndex = startIndex + strategiesPerPage;
-  const currentStrategies = fetchedStrategies.slice(startIndex, endIndex);
+  const currentStrategies = sortedStrategies.slice(startIndex, endIndex);
 
   // Store strategies and raw pool data in localStorage for Strategy component
   useEffect(() => {
@@ -403,56 +332,37 @@ export default function Dashboard() {
   }, [pools, fetchedStrategies]);
 
   const dynamicTokenCards = useMemo(() => {
-    return pools
-      .map((pool) => {
-        const apyPct = deriveApyPct(pool);
-        const risk = calculateRisk(pool);
-        const isGame =
-          isGameToken(pool.token0_ticker, pool.token0_name) ||
-          isGameToken(pool.token1_ticker, pool.token1_name);
-
-        if (apyPct <= 0) return null;
-
+    // Mirror the same ordering as the table (sortedStrategies), then take the first 4
+    return sortedStrategies
+      .filter((s) => (randomSelectedPoolId ? s.id === randomSelectedPoolId : true))
+      .slice(0, 4)
+      .map((strategy) => {
+        const apyPct = parseApyPct(strategy.apy);
+        const valueNumber = Number(strategy.token1_current_price || 0);
+        const value = valueNumber > 0 ? fmtUSD(valueNumber) : strategy.tvl;
         return {
-          symbol: pool.amm_name?.split(" ")[2],
-          logo: getTokenLogo(pool.token0),
-          logo2: getTokenLogo(pool.token1),
-          value: fmtUSD(Number(pool.token1_current_price || 0)),
-          apy: fmtPct(apyPct),
-          protocol: pool.amm_name?.split(" ")[0],
-          volume: fmtUSD(Number(pool.volume_usd) || 0),
-          market_cap: fmtUSD(Number(pool.market_cap) || 0),
-          tvl: fmtUSD(Number(pool.liquidity_usd) || 0),
-          risk: risk.risk,
-          riskScore: risk.score,
-          isGame: isGame,
-          pool: pool,
+          symbol: strategy.name,
+          logo: strategy.token_icon,
+          logo2: strategy.token_icon2,
+          value,
+          apy: strategy.apy,
+          protocol: strategy.protocol,
+          volume: fmtUSD(Number(strategy.volume_usd) || 0),
+          market_cap: fmtUSD(Number(strategy.market_cap) || 0),
+          tvl: strategy.tvl,
+          risk: strategy.risk,
+          riskScore: strategy.riskScore,
+          hasSecondTokenLogo: Boolean(strategy.token_icon2),
+          isLiquidOps: strategy.protocol === "LiquidOps",
+          _score: compositeScore(apyPct, Number(strategy.riskScore || 0)),
         };
-      })
-      .filter(Boolean)
-      .sort((a, b) => {
-        // Prioritize by risk score first (higher = safer), then game tokens, then APY
-        if (a!.riskScore !== b!.riskScore) return b!.riskScore - a!.riskScore;
-        if (a!.isGame && !b!.isGame) return -1;
-        if (!a!.isGame && b!.isGame) return 1;
-        return (
-          Number(b!.apy.replace("%", "")) - Number(a!.apy.replace("%", ""))
-        );
-      })
-      .slice(0, 4);
-  }, [
-    pools,
-    deriveApyPct,
-    fmtPct,
-    fmtUSD,
-    calculateRisk,
-    isGameToken,
-    getTokenLogo,
-  ]);
+      });
+  }, [sortedStrategies, randomSelectedPoolId, fmtUSD, compositeScore, parseApyPct]);
 
   const displayTokenCards = useMemo(() => {
     return dynamicTokenCards;
   }, [dynamicTokenCards]);
+
 
   return (
     <div className="min-h-screen bg-[#f8f7f4] dark:bg-[#0F1419]">
@@ -462,13 +372,13 @@ export default function Dashboard() {
         <div className="absolute inset-0 overflow-y-hidden -left-1 -top-[128px]">
           {theme.theme == "light" ? (
             <img
-              src={dashboard_grid}
+              src={"/graph_main_stra.svg"}
               alt="dashboard_grid"
               className="absolute inset-0 opacity-40 md:opacity-45 dark:md:opacity-10 "
             />
           ) : (
             <img
-              src={dashboard_grid_dark}
+              src={"/background_grid_dark.svg"}
               alt="dashboard_grid"
               className="absolute inset-0 opacity-40 md:opacity-45 dark:md:opacity-50 "
             />
@@ -482,7 +392,7 @@ export default function Dashboard() {
               <div className="flex items-center space-x-4">
                 {/* YAO Logo */}
                 <img
-                  src={theme.theme === "light" ? yao_text : yao_text_white}
+                  src={theme.theme === "light" ? "/YAO.svg" : "/yao_text_white.svg"}
                   alt="yao_text"
                   className="w-[127px] h-[48px] mt-1"
                 />
@@ -502,7 +412,7 @@ export default function Dashboard() {
                   Total Value Locked (TVL)
                 </p>
                 <p className="text-[#1A2228] dark:text-[#EAEAEA] text-2xl md:text-3xl font-bold">
-                  $77.40k+
+                  $NaN
                 </p>
               </div>
 
@@ -611,11 +521,13 @@ export default function Dashboard() {
                             alt={token?.symbol}
                             className="w-5 h-5 rounded-full"
                           />
-                          <img
-                            src={token?.logo2}
-                            alt={token?.symbol}
-                            className="w-5 h-5 rounded-full -translate-x-2"
-                          />
+                          {token?.hasSecondTokenLogo && !token?.isLiquidOps && (
+                            <img
+                              src={token?.logo2}
+                              alt={token?.symbol}
+                              className="w-5 h-5 rounded-full -translate-x-2"
+                            />
+                          )}
                         </div>
                       </div>
 
@@ -656,44 +568,81 @@ export default function Dashboard() {
         {/* Strategies and Find Yields Content */}
         {(activeTab === "strategies" || activeTab === "find-yields") && (
           <>
+            {/* Filter Tabs for Strategies */}
+            {activeTab === "strategies" && (
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 space-y-3 sm:space-y-0">
+                <div className="flex flex-wrap gap-2 sm:gap-4">
+                  <Button
+                    variant={protocolFilter === "All" ? "default" : "outline"}
+                    size="sm"
+                    className="bg-[#ECECEC] dark:bg-[#161E24] text-[#565E64] hover:bg-[#ececec95] dark:hover:bg-[#161e2484] text-xs sm:text-sm"
+                    onClick={() => setProtocolFilter("All")}
+                  >
+                    All
+                  </Button>
+                  {/* <Button commented out becuase we have not officially integrated it. do not remove this code
+                    variant={protocolFilter === "Dexi" ? "default" : "outline"}
+                    size="sm"
+                    className="border border-[#EAEAEA] dark:border-[#192127] text-[#565E64] hover:bg-[#ececec95] dark:hover:bg-[#161e2484] text-xs sm:text-sm"
+                    onClick={() => setProtocolFilter("Dexi")}
+                  >
+                    Dexi
+                  </Button> */}
+                  <Button
+                    variant={protocolFilter === "Botega" ? "default" : "outline"}
+                    size="sm"
+                    className="border border-[#EAEAEA] dark:border-[#192127] text-[#565E64] hover:bg-[#ececec95] dark:hover:bg-[#161e2484] text-xs sm:text-sm"
+                    onClick={() => setProtocolFilter("Botega")}
+                  >
+                    Botega
+                  </Button>
+                  <Button
+                    variant={protocolFilter === "Liquid Ops" ? "default" : "outline"}
+                    size="sm"
+                    className="border border-[#EAEAEA] dark:border-[#192127] text-[#565E64] hover:bg-[#ececec95] dark:hover:bg-[#161e2484] text-xs sm:text-sm"
+                    onClick={() => setProtocolFilter("Liquid Ops")}
+                  >
+                    Liquid Ops
+                  </Button>
+                  {/* <Button commented out becuase we have not officially integrated it. do not remove this code
+                    variant={protocolFilter === "Permaswap" ? "default" : "outline"}
+                    size="sm"
+                    className="border border-[#EAEAEA] dark:border-[#192127] text-[#565E64] hover:bg-[#ececec95] dark:hover:bg-[#161e2484] text-xs sm:text-sm"
+                    onClick={() => setProtocolFilter("Permaswap")}
+                  >
+                    Permaswap
+                  </Button> */}
+                </div>
+              </div>
+            )}
+
             {/* Filter Tabs for Find Yields */}
             {activeTab === "find-yields" && (
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 space-y-3 sm:space-y-0">
                 <div className="flex flex-wrap gap-2 sm:gap-4">
                   <Button
-                    variant="default"
+                    variant={protocolFilter === "All" ? "default" : "outline"}
                     size="sm"
                     className="bg-[#ECECEC] dark:bg-[#161E24] text-[#565E64] hover:bg-[#ececec95] dark:hover:bg-[#161e2484] text-xs sm:text-sm"
+                    onClick={() => setProtocolFilter("All")}
                   >
                     All
                   </Button>
                   <Button
-                    variant="default"
+                    variant={protocolFilter === "Liquid Ops" ? "default" : "outline"}
                     size="sm"
                     className="border border-[#EAEAEA] dark:border-[#192127] text-[#565E64] hover:bg-[#ececec95] dark:hover:bg-[#161e2484] text-xs sm:text-sm"
-                  >
-                    Dexi
-                  </Button>
-                  <Button
-                    variant="default"
-                    size="sm"
-                    className="border border-[#EAEAEA] dark:border-[#192127] text-[#565E64] hover:bg-[#ececec95] dark:hover:bg-[#161e2484] text-xs sm:text-sm"
-                  >
-                    Botega
-                  </Button>
-                  <Button
-                    variant="default"
-                    size="sm"
-                    className="border border-[#EAEAEA] dark:border-[#192127] text-[#565E64] hover:bg-[#ececec95] dark:hover:bg-[#161e2484] text-xs sm:text-sm"
-                  >
-                    Permaswap
-                  </Button>
-                  <Button
-                    variant="default"
-                    size="sm"
-                    className="border border-[#EAEAEA] dark:border-[#192127] text-[#565E64] hover:bg-[#ececec95] dark:hover:bg-[#161e2484] text-xs sm:text-sm"
+                    onClick={() => setProtocolFilter("Liquid Ops")}
                   >
                     Liquid Ops
+                  </Button>
+                  <Button
+                    variant={protocolFilter === "Botega" ? "default" : "outline"}
+                    size="sm"
+                    className="border border-[#EAEAEA] dark:border-[#192127] text-[#565E64] hover:bg-[#ececec95] dark:hover:bg-[#161e2484] text-xs sm:text-sm"
+                    onClick={() => setProtocolFilter("Botega")}
+                  >
+                    Botega
                   </Button>
                 </div>
                 <Button
@@ -702,7 +651,7 @@ export default function Dashboard() {
                   className="text-[#565E64] dark:text-[#95A0A6] hover:bg-none border border-[#EAEAEA] dark:border-[#192127] text-xs sm:text-sm"
                 >
                   <img
-                    src={filter}
+                    src={"/filter.svg"}
                     alt="filter"
                     className="w-3 h-3 sm:w-4 sm:h-4"
                   />
@@ -719,7 +668,7 @@ export default function Dashboard() {
                     {loadingPools && (
                       <span className="text-[#7e868c]">Loading pools…</span>
                     )}
-                    {!loadingPools && poolsError && (
+                    {!loadingPools && poolsError && strategies.length === 0 && (
                       <div className="flex items-center justify-center py-8">
                         <div className="text-center">
                           <div className="w-16 h-16 mx-auto mb-4 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
@@ -820,136 +769,272 @@ export default function Dashboard() {
                             : true
                         )
                         .map((strategy, index) => (
-                          <Link key={index} to={`/strategy/${strategy.id}`}>
-                            <div
-                              className={`grid grid-cols-7 gap-4 p-4 mb-2 rounded-br-lg rounded-bl-lg bg-[#F3F3F3] hover:bg-[#f7f7f6] dark:hover:bg-[#20282E] dark:bg-[#141C22] transition-colors cursor-pointer relative`}
-                            >
-                              {/* {strategy.isStrategy && (
-                    <div className="absolute inset-0 bg-white/60 dark:bg-[#141c2298] backdrop-blur-[0.5px] opacity-90 z-10 pointer-events-none"></div>
-                  )} */}
-
-                              <div className="flex space-x-3 col-span-3">
-                                <div className=" flex">
-                                  <span className="w-5 h-5 md:w-8 md:h-8 rounded-2xl bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#10181D] dark:to-[#141C22] backdrop-blur-md dark:text-white flex items-center justify-center transition-all duration-200 hover:scale-105 shadow-lg">
-                                    <img
-                                      src={strategy.token_icon}
-                                      alt={strategy.name}
-                                      className=""
-                                    />
-                                  </span>
-                                  <span className="w-5 h-5 md:w-8 md:h-8 rounded-2xl bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#10181D] dark:to-[#121A21] backdrop-blur-md dark:text-white flex items-center justify-center transition-all duration-200 hover:scale-105 shadow-lg -translate-x-2">
-                                    <img
-                                      src={strategy.token_icon2}
-                                      alt={strategy.name}
-                                      className=" "
-                                    />
-                                  </span>
-                                </div>
-                                <div className="space-y-1">
-                                  <div className="font-medium text-[#1a2228] dark:text-[#FEFEFD] flex items-center space-x-2">
-                                    <span>{strategy.name}</span>
-                                    {strategy.badges.map((badge, i) => (
-                                      <div className="flex items-center space-x-2">
-                                        <span className="w-4 h-4 md:w-8 md:h-6 rounded-lg bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#10181D] dark:to-[#121A21] backdrop-blur-md dark:text-white flex items-center justify-center transition-all duration-200 hover:scale-105 shadow-lg">
-                                          <img
-                                            src={strategy.verified}
-                                            alt={strategy.name}
-                                            className=""
-                                          />
-                                        </span>
-
-                                        <Badge
-                                          key={i}
-                                          variant="secondary"
-                                          className="bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#10181D] dark:to-[#121A21] backdrop-blur-md dark:text-white py-1 flex items-center justify-center transition-all duration-200 hover:scale-105 shadow-lg text-[#10181D] text-xs"
-                                        >
-                                          {badge}
-                                        </Badge>
-                                      </div>
-                                    ))}
-                                  </div>
-
-                                  <div className=" flex items-center space-x-1">
-                                    <img
-                                      src={strategy.protocol_icon}
-                                      alt={strategy.name}
-                                      className="w-4 h-4"
-                                    />
-                                    <span className="text-[#808c7e] text-sm">
-                                      {strategy.protocol}
+                          strategy.protocol === "LiquidOps" && strategy.external_url ? (
+                            <a key={index} href={strategy.external_url} target="_blank" rel="noopener noreferrer">
+                              <div
+                                className={`grid grid-cols-7 gap-4 p-4 mb-2 rounded-br-lg rounded-bl-lg bg-[#F3F3F3] hover:bg-[#f7f7f6] dark:hover:bg-[#20282E] dark:bg-[#141C22] transition-colors cursor-pointer relative`}
+                              >
+                                {/* Strategy Name Column */}
+                                <div className="flex space-x-3 col-span-3">
+                                  <div className=" flex">
+                                    <span className="w-5 h-5 md:w-8 md:h-8 rounded-2xl bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#10181D] dark:to-[#141C22] backdrop-blur-md dark:text-white flex items-center justify-center transition-all duration-200 hover:scale-105 shadow-lg">
+                                      <img
+                                        src={strategy.token_icon}
+                                        alt={strategy.name}
+                                        className=""
+                                      />
                                     </span>
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="text-center space-y-1">
-                                {strategy.isStrategy ? (
-                                  <div
-                                    className={`p-1.5 mx-auto hover:bg-[#e9e9e9] w-4 h-4 md:w-10 md:h-10 text-center rounded-lg bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#20282E] dark:to-[#121A21] backdrop-blur-md font-bold dark:text-white transition-all duration-200 hover:scale-105 shadow-lg`}
-                                  >
-                                    {strategy.apy}
-                                  </div>
-                                ) : (
-                                  <div
-                                    className={`font-medium ${strategy.apyColor}`}
-                                  >
-                                    {strategy.apy}
-                                  </div>
-                                )}
-
-                                <div className="">
-                                  {strategy.isStrategy ? (
-                                    <div></div>
-                                  ) : (
-                                    <div className="text-[#7e868c] text-sm text-center flex items-center justify-center space-x-1">
-                                      <span>{strategy.points}</span>
-
-                                      <span>
+                                    {strategy.protocol !== "LiquidOps" && strategy.token_icon2 && (
+                                      <span className="w-5 h-5 md:w-8 md:h-8 rounded-2xl bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#10181D] dark:to-[#121A21] backdrop-blur-md dark:text-white flex items-center justify-center transition-all duration-200 hover:scale-105 shadow-lg -translate-x-2">
                                         <img
-                                          src={user_circle}
+                                          src={strategy.token_icon2}
                                           alt={strategy.name}
+                                          className=" "
                                         />
                                       </span>
+                                    )}
+                                  </div>
+                                  <div className="space-y-1">
+                                    <div className="font-medium text-[#1a2228] dark:text-[#FEFEFD] flex items-center space-x-2">
+                                      <span>{stripBotegaLP(strategy.name)}</span>
+                                      {strategy.badges.map((badge, i) => (
+                                        <div className="flex items-center space-x-2">
+                                          <span className="w-4 h-4 md:w-8 md:h-6 rounded-lg bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#10181D] dark:to-[#121A21] backdrop-blur-md dark:text-white flex items-center justify-center transition-all duration-200 hover:scale-105 shadow-lg">
+                                            <img
+                                              src={strategy.verified}
+                                              alt={strategy.name}
+                                              className=""
+                                            />
+                                          </span>
+
+                                          <Badge
+                                            key={i}
+                                            variant="secondary"
+                                            className="bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#10181D] dark:to-[#121A21] backdrop-blur-md dark:text-white shadow-sm text-[#10181D] text-xs"
+                                          >
+                                            {badge === "Hot & New"
+                                              ? "Hot & New"
+                                              : badge}
+                                          </Badge>
+                                        </div>
+                                      ))}
+                                    </div>
+
+                                    <div className=" flex items-center space-x-1">
+                                      <img
+                                        src={strategy.protocol_icon}
+                                        alt={strategy.name}
+                                        className="w-4 h-4"
+                                      />
+                                      <span className="text-[#808c7e] text-sm">
+                                        {strategy.protocol}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="text-center space-y-1">
+                                  {strategy.isStrategy ? (
+                                    <div
+                                      className={`p-1.5 mx-auto hover:bg-[#e9e9e9] w-4 h-4 md:w-10 md:h-10 text-center rounded-lg bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#20282E] dark:to-[#121A21] backdrop-blur-md font-bold dark:text-white transition-all duration-200 hover:scale-105 shadow-lg`}
+                                    >
+                                      {strategy.apy}
+                                    </div>
+                                  ) : (
+                                    <div
+                                      className={`font-medium ${strategy.apyColor}`}
+                                    >
+                                      {strategy.apy}
+                                    </div>
+                                  )}
+
+                                  <div className="">
+                                    {strategy.isStrategy ? (
+                                      <div></div>
+                                    ) : (
+                                      <div className="text-[#7e868c] text-sm text-center flex items-center justify-center space-x-1">
+                                        <span>{strategy.points}</span>
+
+                                        <span>
+                                          <img
+                                            src={"/user-circle.svg"}
+                                            alt={strategy.name}
+                                          />
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="text-center">
+                                  {strategy.isStrategy ? (
+                                    <div className="flex justify-center space-x-2">
+                                      <button className="p-1.5 font-bold hover:bg-[#e9e9e9] w-4 h-4 md:w-10 md:h-10 text-center rounded-lg bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#20282E] dark:to-[#121a21] backdrop-blur-md dark:text-white transition-all duration-200 hover:scale-105 shadow-lg">
+                                        —
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <div className="flex justify-center">
+                                      <div className="flex space-x-1.5">
+                                        {generateRiskBars(
+                                          strategy.riskScore || 60
+                                        )}
+                                      </div>
                                     </div>
                                   )}
                                 </div>
+
+                                <div className="">
+                                  {strategy.isStrategy ? (
+                                    <div className="p-1.5 font-bold mx-auto hover:bg-[#e9e9e9] w-4 h-4 md:w-10 md:h-10 text-center rounded-lg bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#20282E] dark:to-[#121A21] backdrop-blur-md dark:text-white transition-all duration-200 hover:scale-105 shadow-lg">
+                                      {strategy.tvl}
+                                    </div>
+                                  ) : (
+                                    <div className="text-center font-medium text-[#565E64] ">
+                                      {strategy.tvl}
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="text-center ">
+                                  <button className="p-1.5 hover:bg-[#e9e9e9] w-10 h-10 text-center rounded-lg bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#10181D] dark:to-[#121A21] backdrop-blur-md dark:text-white transition-all duration-200 hover:scale-105 shadow-lg">
+                                    <img src={"/help-circle.svg"} alt={strategy.name} />
+                                  </button>
+                                </div>
                               </div>
-                              <div className="text-center">
-                                {strategy.isStrategy ? (
-                                  <div className="flex justify-center space-x-2">
-                                    <button className="p-1.5 font-bold hover:bg-[#e9e9e9] w-4 h-4 md:w-10 md:h-10 text-center rounded-lg bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#20282E] dark:to-[#121a21] backdrop-blur-md dark:text-white transition-all duration-200 hover:scale-105 shadow-lg">
-                                      —
-                                    </button>
+                            </a>
+                          ) : (
+                            <Link key={index} to={`/strategy/${strategy.id}`}>
+                              <div
+                                className={`grid grid-cols-7 gap-4 p-4 mb-2 rounded-br-lg rounded-bl-lg bg-[#F3F3F3] hover:bg-[#f7f7f6] dark:hover:bg-[#20282E] dark:bg-[#141C22] transition-colors cursor-pointer relative`}
+                              >
+                                {/* {strategy.isStrategy && (
+                      <div className="absolute inset-0 bg-white/60 dark:bg-[#141c2298] backdrop-blur-[0.5px] opacity-90 z-10 pointer-events-none"></div>
+                    )} */}
+
+                                <div className="flex space-x-3 col-span-3">
+                                  <div className=" flex">
+                                    <span className="w-5 h-5 md:w-8 md:h-8 rounded-2xl bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#10181D] dark:to-[#141C22] backdrop-blur-md dark:text-white flex items-center justify-center transition-all duration-200 hover:scale-105 shadow-lg">
+                                      <img
+                                        src={strategy.token_icon}
+                                        alt={strategy.name}
+                                        className=""
+                                      />
+                                    </span>
+                                    <span className="w-5 h-5 md:w-8 md:h-8 rounded-2xl bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#10181D] dark:to-[#121A21] backdrop-blur-md dark:text-white flex items-center justify-center transition-all duration-200 hover:scale-105 shadow-lg -translate-x-2">
+                                      <img
+                                        src={strategy.token_icon2}
+                                        alt={strategy.name}
+                                        className=" "
+                                      />
+                                    </span>
                                   </div>
-                                ) : (
-                                  <div className="flex justify-center">
-                                    <div className="flex space-x-1.5">
-                                      {generateRiskBars(
-                                        strategy.riskScore || 60
-                                      )}
+                                  <div className="space-y-1">
+                                    <div className="font-medium text-[#1a2228] dark:text-[#FEFEFD] flex items-center space-x-2">
+                                      <span>{stripBotegaLP(strategy.name)}</span>
+                                      {strategy.badges.map((badge, i) => (
+                                        <div className="flex items-center space-x-2">
+                                          <span className="w-4 h-4 md:w-8 md:h-6 rounded-lg bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#10181D] dark:to-[#121A21] backdrop-blur-md dark:text-white flex items-center justify-center transition-all duration-200 hover:scale-105 shadow-lg">
+                                            <img
+                                              src={strategy.verified}
+                                              alt={strategy.name}
+                                              className=""
+                                            />
+                                          </span>
+
+                                          <Badge
+                                            key={i}
+                                            variant="secondary"
+                                            className="bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#10181D] dark:to-[#121A21] backdrop-blur-md dark:text-white shadow-sm text-[#10181D] text-xs"
+                                          >
+                                            {badge === "Hot & New"
+                                              ? "Hot & New"
+                                              : badge}
+                                          </Badge>
+                                        </div>
+                                      ))}
+                                    </div>
+
+                                    <div className=" flex items-center space-x-1">
+                                      <img
+                                        src={strategy.protocol_icon}
+                                        alt={strategy.name}
+                                        className="w-4 h-4"
+                                      />
+                                      <span className="text-[#808c7e] text-sm">
+                                        {strategy.protocol}
+                                      </span>
                                     </div>
                                   </div>
-                                )}
-                              </div>
+                                </div>
+                                <div className="text-center space-y-1">
+                                  {strategy.isStrategy ? (
+                                    <div
+                                      className={`p-1.5 mx-auto hover:bg-[#e9e9e9] w-4 h-4 md:w-10 md:h-10 text-center rounded-lg bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#20282E] dark:to-[#121A21] backdrop-blur-md font-bold dark:text-white transition-all duration-200 hover:scale-105 shadow-lg`}
+                                    >
+                                      {strategy.apy}
+                                    </div>
+                                  ) : (
+                                    <div
+                                      className={`font-medium ${strategy.apyColor}`}
+                                    >
+                                      {strategy.apy}
+                                    </div>
+                                  )}
 
-                              <div className="">
-                                {strategy.isStrategy ? (
-                                  <div className="p-1.5 font-bold mx-auto hover:bg-[#e9e9e9] w-4 h-4 md:w-10 md:h-10 text-center rounded-lg bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#20282E] dark:to-[#121A21] backdrop-blur-md dark:text-white transition-all duration-200 hover:scale-105 shadow-lg">
-                                    {strategy.tvl}
-                                  </div>
-                                ) : (
-                                  <div className="text-center font-medium text-[#565E64] ">
-                                    {strategy.tvl}
-                                  </div>
-                                )}
-                              </div>
+                                  <div className="">
+                                    {strategy.isStrategy ? (
+                                      <div></div>
+                                    ) : (
+                                      <div className="text-[#7e868c] text-sm text-center flex items-center justify-center space-x-1">
+                                        <span>{strategy.points}</span>
 
-                              <div className="text-center ">
-                                <button className="p-1.5 hover:bg-[#e9e9e9] w-10 h-10 text-center rounded-lg bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#10181D] dark:to-[#121A21] backdrop-blur-md dark:text-white transition-all duration-200 hover:scale-105 shadow-lg">
-                                  <img src={help_circle} alt={strategy.name} />
-                                </button>
+                                        <span>
+                                          <img
+                                            src={"/user-circle.svg"}
+                                            alt={strategy.name}
+                                          />
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="text-center">
+                                  {strategy.isStrategy ? (
+                                    <div className="flex justify-center space-x-2">
+                                      <button className="p-1.5 font-bold hover:bg-[#e9e9e9] w-4 h-4 md:w-10 md:h-10 text-center rounded-lg bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#20282E] dark:to-[#121a21] backdrop-blur-md dark:text-white transition-all duration-200 hover:scale-105 shadow-lg">
+                                        —
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <div className="flex justify-center">
+                                      <div className="flex space-x-1.5">
+                                        {generateRiskBars(
+                                          strategy.riskScore || 60
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="">
+                                  {strategy.isStrategy ? (
+                                    <div className="p-1.5 font-bold mx-auto hover:bg-[#e9e9e9] w-4 h-4 md:w-10 md:h-10 text-center rounded-lg bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#20282E] dark:to-[#121A21] backdrop-blur-md dark:text-white transition-all duration-200 hover:scale-105 shadow-lg">
+                                      {strategy.tvl}
+                                    </div>
+                                  ) : (
+                                    <div className="text-center font-medium text-[#565E64] ">
+                                      {strategy.tvl}
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="text-center ">
+                                  <button className="p-1.5 hover:bg-[#e9e9e9] w-10 h-10 text-center rounded-lg bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#10181D] dark:to-[#121A21] backdrop-blur-md dark:text-white transition-all duration-200 hover:scale-105 shadow-lg">
+                                    <img src={"/help-circle.svg"} alt={strategy.name} />
+                                  </button>
+                                </div>
                               </div>
-                            </div>
-                          </Link>
+                            </Link>
+                          )
                         ))}
                 </CardContent>
               </Card>
@@ -962,108 +1047,196 @@ export default function Dashboard() {
                   randomSelectedPoolId ? s.id === randomSelectedPoolId : true
                 )
                 .map((strategy, index) => (
-                  <Link key={index} to={`/strategy/${strategy.id}`}>
-                    <div className="relative">
-                      {strategy.isStrategy && (
-                        <div className="absolute inset-0 bg-white/60 dark:bg-[#141c2298] backdrop-blur-[0.5px] opacity-90 z-10 pointer-events-none rounded-lg"></div>
-                      )}
-                      <Card className="bg-white dark:bg-[#141C22] mb-2 p-2 sm:p-3 border border-gray-200 dark:border-[#20282E] shadow-sm hover:shadow-md transition-all duration-200">
-                        <CardContent className="px-3 sm:px-4 py-2 sm:py-3">
-                          <div className="relative z-20">
-                            {/* Header - Title and Token */}
-                            <div className="flex items-center justify-between mb-2 sm:mb-3">
-                              <div className="flex items-center space-x-2 sm:space-x-3">
-                                <img
-                                  src={strategy.token_icon}
-                                  alt={strategy.name}
-                                  className="w-5 h-5 sm:w-6 sm:h-6 rounded-full"
-                                />
-                                <div>
-                                  <h3 className="font-semibold text-[#1a2228] dark:text-[#FEFEFD] text-xs sm:text-sm">
-                                    {strategy.name}
-                                  </h3>
-                                  <p className="text-[#7e868c] text-xs flex items-center space-x-1">
-                                    <span>{strategy.protocol}</span>
+                  strategy.protocol === "LiquidOps" && strategy.external_url ? (
+                    <a key={index} href={strategy.external_url} target="_blank" rel="noopener noreferrer">
+                      <div className="relative">
+                        {strategy.isStrategy && (
+                          <div className="absolute inset-0 bg-white/60 dark:bg-[#141c2298] backdrop-blur-[0.5px] opacity-90 z-10 pointer-events-none rounded-lg"></div>
+                        )}
+                        <Card className="bg-white dark:bg-[#141C22] mb-2 p-2 sm:p-3 border border-gray-200 dark:border-[#20282E] shadow-sm hover:shadow-md transition-all duration-200">
+                          <CardContent className="px-3 sm:px-4 py-2 sm:py-3">
+                            <div className="relative z-20">
+                              {/* Header - Title and Token */}
+                              <div className="flex items-center justify-between mb-2 sm:mb-3">
+                                <div className="flex items-center space-x-2 sm:space-x-3">
+                                  <img
+                                    src={strategy.token_icon}
+                                    alt={strategy.name}
+                                    className="w-5 h-5 sm:w-6 sm:h-6 rounded-full"
+                                  />
+                                  <div>
+                                    <h3 className="font-semibold text-[#1a2228] dark:text-[#FEFEFD] text-xs sm:text-sm">
+                                      {stripBotegaLP(strategy.name)}
+                                    </h3>
+                                    <p className="text-[#7e868c] text-xs flex items-center space-x-1">
+                                      <span>{strategy.protocol}</span>
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center space-x-1 sm:space-x-2">
+                                  <img
+                                    src={strategy.verified}
+                                    alt="verified"
+                                    className="w-3 h-3 sm:w-4 sm:h-4"
+                                  />
+                                  {strategy.badges.map((badge, i) => (
+                                    <Badge
+                                      key={i}
+                                      variant="secondary"
+                                      className="bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#10181D] dark:to-[#121A21] backdrop-blur-md dark:text-white shadow-sm text-[#10181D] text-xs px-1 sm:px-2 py-1"
+                                    >
+                                      {badge === "Hot & New" ? "Hot & New" : badge}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </div>
+                              {/* Metrics Row */}
+                              <div className="flex items-center justify-between mb-2 sm:mb-3">
+                                {/* APY */}
+                                <div className="text-center">
+                                  <p className="text-[#7e868c] text-xs mb-1">APY</p>
+                                  <p className={`font-semibold text-xs sm:text-sm ${strategy.apyColor}`}>
+                                    {strategy.apy}
+                                  </p>
+                                </div>
+                                {/* Risk */}
+                                <div className="text-center">
+                                  <p className="text-[#7e868c] text-xs mb-1">RISK</p>
+                                  <div className="flex space-x-1">
+                                    <div className="text-center">
+                                      {strategy.isStrategy ? (
+                                        <div className="flex justify-center space-x-2">
+                                          <button className="p-1.5 font-bold hover:bg-[#e9e9e9] w-4 h-4 md:w-10 md:h-10 text-center rounded-lg bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#20282E] dark:to-[#121a21] backdrop-blur-md dark:text-white transition-all duration-200 hover:scale-105 shadow-lg">
+                                            —
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <div className="flex justify-center">
+                                          <div className="flex space-x-1.5">
+                                            {generateRiskBars(strategy.riskScore || 60)}
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                                {/* TVL */}
+                                <div className="text-center">
+                                  <p className="text-[#7e868c] text-xs mb-1">TVL</p>
+                                  <p className="font-semibold text-[#565E64] text-xs sm:text-sm">
+                                    {strategy.tvl}
                                   </p>
                                 </div>
                               </div>
-
-                              {/* Verification and Badges */}
-                              <div className="flex items-center space-x-1 sm:space-x-2">
-                                <img
-                                  src={strategy.verified}
-                                  alt="verified"
-                                  className="w-3 h-3 sm:w-4 sm:h-4"
-                                />
-                                {strategy.badges.map((badge, i) => (
-                                  <Badge
-                                    key={i}
-                                    variant="secondary"
-                                    className="bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#10181D] dark:to-[#121A21] backdrop-blur-md dark:text-white shadow-sm text-[#10181D] text-xs px-1 sm:px-2 py-1"
-                                  >
-                                    {badge === "Hot & New"
-                                      ? "Hot & New"
-                                      : badge}
-                                  </Badge>
-                                ))}
-                              </div>
                             </div>
-
-                            {/* Metrics Row */}
-                            <div className="flex items-center justify-between mb-2 sm:mb-3">
-                              {/* APY */}
-                              <div className="text-center">
-                                <p className="text-[#7e868c] text-xs mb-1">
-                                  APY
-                                </p>
-                                <p
-                                  className={`font-semibold text-xs sm:text-sm ${strategy.apyColor}`}
-                                >
-                                  {strategy.apy}
-                                </p>
-                              </div>
-
-                              {/* Risk */}
-                              <div className="text-center">
-                                <p className="text-[#7e868c] text-xs mb-1">
-                                  RISK
-                                </p>
-                                <div className="flex space-x-1">
-                                  <div className="text-center">
-                                    {strategy.isStrategy ? (
-                                      <div className="flex justify-center space-x-2">
-                                        <button className="p-1.5 font-bold hover:bg-[#e9e9e9] w-4 h-4 md:w-10 md:h-10 text-center rounded-lg bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#20282E] dark:to-[#121a21] backdrop-blur-md dark:text-white transition-all duration-200 hover:scale-105 shadow-lg">
-                                          —
-                                        </button>
-                                      </div>
-                                    ) : (
-                                      <div className="flex justify-center">
-                                        <div className="flex space-x-1.5">
-                                          {generateRiskBars(
-                                            strategy.riskScore || 60
-                                          )}
-                                        </div>
-                                      </div>
-                                    )}
+                          </CardContent>
+                        </Card>
+                      </div>
+                    </a>
+                  ) : (
+                    <Link key={index} to={`/strategy/${strategy.id}`}>
+                      <div className="relative">
+                        {strategy.isStrategy && (
+                          <div className="absolute inset-0 bg-white/60 dark:bg-[#141c2298] backdrop-blur-[0.5px] opacity-90 z-10 pointer-events-none rounded-lg"></div>
+                        )}
+                        <Card className="bg-white dark:bg-[#141C22] mb-2 p-2 sm:p-3 border border-gray-200 dark:border-[#20282E] shadow-sm hover:shadow-md transition-all duration-200">
+                          <CardContent className="px-3 sm:px-4 py-2 sm:py-3">
+                            <div className="relative z-20">
+                              {/* Header - Title and Token */}
+                              <div className="flex items-center justify-between mb-2 sm:mb-3">
+                                <div className="flex items-center space-x-2 sm:space-x-3">
+                                  <img
+                                    src={strategy.token_icon}
+                                    alt={strategy.name}
+                                    className="w-5 h-5 sm:w-6 sm:h-6 rounded-full"
+                                  />
+                                  <div>
+                                    <h3 className="font-semibold text-[#1a2228] dark:text-[#FEFEFD] text-xs sm:text-sm">
+                                      {stripBotegaLP(strategy.name)}
+                                    </h3>
+                                    <p className="text-[#7e868c] text-xs flex items-center space-x-1">
+                                      <span>{strategy.protocol}</span>
+                                    </p>
                                   </div>
+                                </div>
+
+                                {/* Verification and Badges */}
+                                <div className="flex items-center space-x-1 sm:space-x-2">
+                                  <img
+                                    src={strategy.verified}
+                                    alt="verified"
+                                    className="w-3 h-3 sm:w-4 sm:h-4"
+                                  />
+                                  {strategy.badges.map((badge, i) => (
+                                    <Badge
+                                      key={i}
+                                      variant="secondary"
+                                      className="bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#10181D] dark:to-[#121A21] backdrop-blur-md dark:text-white shadow-sm text-[#10181D] text-xs px-1 sm:px-2 py-1"
+                                    >
+                                      {badge === "Hot & New"
+                                        ? "Hot & New"
+                                        : badge}
+                                    </Badge>
+                                  ))}
                                 </div>
                               </div>
 
-                              {/* TVL */}
-                              <div className="text-center">
-                                <p className="text-[#7e868c] text-xs mb-1">
-                                  TVL
-                                </p>
-                                <p className="font-semibold text-[#565E64] text-xs sm:text-sm">
-                                  {strategy.tvl}
-                                </p>
+                              {/* Metrics Row */}
+                              <div className="flex items-center justify-between mb-2 sm:mb-3">
+                                {/* APY */}
+                                <div className="text-center">
+                                  <p className="text-[#7e868c] text-xs mb-1">
+                                    APY
+                                  </p>
+                                  <p
+                                    className={`font-semibold text-xs sm:text-sm ${strategy.apyColor}`}
+                                  >
+                                    {strategy.apy}
+                                  </p>
+                                </div>
+
+                                {/* Risk */}
+                                <div className="text-center">
+                                  <p className="text-[#7e868c] text-xs mb-1">
+                                    RISK
+                                  </p>
+                                  <div className="flex space-x-1">
+                                    <div className="text-center">
+                                      {strategy.isStrategy ? (
+                                        <div className="flex justify-center space-x-2">
+                                          <button className="p-1.5 font-bold hover:bg-[#e9e9e9] w-4 h-4 md:w-10 md:h-10 text-center rounded-lg bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#20282E] dark:to-[#121a21] backdrop-blur-md dark:text-white transition-all duration-200 hover:scale-105 shadow-lg">
+                                            —
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <div className="flex justify-center">
+                                          <div className="flex space-x-1.5">
+                                            {generateRiskBars(
+                                              strategy.riskScore || 60
+                                            )}
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* TVL */}
+                                <div className="text-center">
+                                  <p className="text-[#7e868c] text-xs mb-1">
+                                    TVL
+                                  </p>
+                                  <p className="font-semibold text-[#565E64] text-xs sm:text-sm">
+                                    {strategy.tvl}
+                                  </p>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  </Link>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    </Link>
+                  )
                 ))}
             </div>
 
@@ -1184,8 +1357,7 @@ export default function Dashboard() {
                   </span>
                   <span className="text-[#7E868C] dark:text-[#95A0A6]">•</span>
                   <span className="text-sm text-[#7E868C] dark:text-[#95A0A6]">
-                    Showing {currentStrategies.length} of{" "}
-                    {fetchedStrategies.length} strategies
+                    Showing {currentStrategies.length} of {filteredStrategies.length} strategies
                   </span>
                 </div>
               </div>
