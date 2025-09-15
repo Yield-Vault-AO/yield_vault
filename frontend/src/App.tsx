@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
 import Header from "./components/landing/Header";
 import HomePage from "./components/landing/HomePage";
 import Dashboard from "./components/Dashboard";
@@ -26,6 +27,20 @@ function App() {
           </main>
 
           <YaoChatbot />
+
+          {/* Global Toast Notifications */}
+          <Toaster
+            toastOptions={{
+              className:
+                "dark:bg-[#1A2228] dark:text-[#EAEAEA] dark:border-[#192127]",
+              duration: 5000,
+              style: {
+                background: "#F8F7F4",
+                color: "#1A2228",
+                border: "1px solid #EAEAEA",
+              },
+            }}
+          />
         </div>
       </Router>
     </PoolProvider>

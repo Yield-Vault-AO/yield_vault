@@ -2,12 +2,11 @@
 
 import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
+import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import back_btn from "../../public/back.svg";
-import ao_logo from "../../public/ao_logo.svg";
 import DashboardFooter from "./dashboard/dashboard_footer";
 import {
   getAgentInfo,
@@ -18,7 +17,10 @@ import {
 import { createDataItemSigner, message, result } from "@permaweb/aoconnect";
 import { AO_TOKEN } from "../constants/yao_process";
 import { getTokenBalance } from "../services/aoService";
-import { formatTokenBalance, convertHumanAmountToBaseUnits } from "../helpers/token";
+import {
+  formatTokenBalance,
+  convertHumanAmountToBaseUnits,
+} from "../helpers/token";
 
 export default function Agent() {
   const { id } = useParams<{ id: string }>();
@@ -66,7 +68,8 @@ export default function Agent() {
   const determineBaseToken = React.useCallback(() => {
     if (!agentInfo) return AO_TOKEN;
     const base = agentInfo["Base-Token"];
-    if (base === SPECIAL_BASE || agentInfo["Token-Out"] === SPECIAL_BASE) return SPECIAL_BASE;
+    if (base === SPECIAL_BASE || agentInfo["Token-Out"] === SPECIAL_BASE)
+      return SPECIAL_BASE;
     return base || AO_TOKEN;
   }, [agentInfo]);
 
@@ -77,7 +80,10 @@ export default function Agent() {
     setTransferError(null);
     try {
       const baseToken = determineBaseToken();
-      const quantity = await convertHumanAmountToBaseUnits(baseToken, depositAmount);
+      const quantity = await convertHumanAmountToBaseUnits(
+        baseToken,
+        depositAmount
+      );
       const messageId = await message({
         process: baseToken,
         tags: [
@@ -97,13 +103,20 @@ export default function Agent() {
       if (messageResult.Messages?.[0]?.Data) {
         console.log("Deposit successful");
         setDepositAmount("");
+
+        // Show success toast
+        toast.success(
+          `Successfully deposited ${depositAmount} tokens to agent`
+        );
+
         // Refresh agent info
         const info = await getAgentInfo(agentId);
         setAgentInfo(info as AgentInfo);
       }
     } catch (error) {
       console.error("Deposit failed:", error);
-      setTransferError("Deposit failed. Please try again.");
+      // Show error toast only (remove setTransferError to avoid duplicate display)
+      toast.error("Deposit failed. Please try again.");
     } finally {
       setIsDepositing(false);
     }
@@ -117,12 +130,19 @@ export default function Agent() {
     try {
       await withdrawFromAgent(agentId, AO_TOKEN, withdrawAmount);
       setWithdrawAmount("");
+
+      // Show success toast
+      toast.success(
+        `Successfully withdrew ${withdrawAmount} tokens from agent`
+      );
+
       // Refresh agent info
       const info = await getAgentInfo(agentId);
       setAgentInfo(info as AgentInfo);
     } catch (error) {
       console.error("Withdrawal failed:", error);
-      setTransferError("Withdrawal failed. Please try again.");
+      // Show error toast only (remove setTransferError to avoid duplicate display)
+      toast.error("Withdrawal failed. Please try again.");
     } finally {
       setIsWithdrawing(false);
     }
@@ -155,11 +175,17 @@ export default function Agent() {
     const loadBalance = async () => {
       try {
         if (!agentInfo) return;
-        const address = await (window as unknown as { arweaveWallet?: { getActiveAddress?: () => Promise<string> } }).arweaveWallet?.getActiveAddress?.();
+        const address = await (
+          window as unknown as {
+            arweaveWallet?: { getActiveAddress?: () => Promise<string> };
+          }
+        ).arweaveWallet?.getActiveAddress?.();
         if (!address) return;
         const baseToken = determineBaseToken();
         const bal = await getTokenBalance(baseToken, address);
-        const formatted = await formatTokenBalance(baseToken, bal, { maxFractionDigits: 6 });
+        const formatted = await formatTokenBalance(baseToken, bal, {
+          maxFractionDigits: 6,
+        });
         setBaseTokenBalance(formatted);
       } catch (e) {
         console.warn("Failed to load base token balance:", e);
@@ -233,7 +259,7 @@ export default function Agent() {
           to="/dashboard"
           className="flex items-center space-x-2 text-[#7e868c] hover:text-[#1a2228] mb-6"
         >
-          <img src={back_btn} alt="back btn" />
+          <img src={"/back.svg"} alt="back btn" />
           <span className="text-sm">GO BACK</span>
         </Link>
 
@@ -523,7 +549,7 @@ export default function Agent() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2 border border-[#DAD9D9E5] dark:border-[#222A30] p-2 rounded-3xl cursor-pointer">
                       <div className="w-6 h-6 rounded-full flex items-center justify-center">
-                        <img src={ao_logo} alt="ao token" />
+                        <img src={"/ao_logo.svg"} alt="ao token" />
                       </div>
                       <span className="font-medium dark:text-[#EAEAEA]">
                         AO
@@ -544,10 +570,14 @@ export default function Agent() {
                     </div>
                     <div className="text-right">
                       <div className="text-[#7E868C] dark:text-[#95A0A6] text-sm">
-                        {depositWithdrawTab === "deposit" ? "Wallet Balance" : "Agent Balance"}
+                        {depositWithdrawTab === "deposit"
+                          ? "Wallet Balance"
+                          : "Agent Balance"}
                       </div>
                       <div className="font-medium text-lg text-[#565E64] dark:text-[#EAEAEA]">
-                        {depositWithdrawTab === "deposit" ? baseTokenBalance : "Loading..."}
+                        {depositWithdrawTab === "deposit"
+                          ? baseTokenBalance
+                          : "Loading..."}
                       </div>
                     </div>
                   </div>

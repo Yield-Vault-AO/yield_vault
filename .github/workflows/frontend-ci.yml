@@ -59,10 +59,13 @@ jobs:
         working-directory: frontend
         run: pnpm run tsc
 
-      - name: Build
-        working-directory: frontend
-        run: pnpm run build
+      # - name: Build
+      #   working-directory: frontend
+      #   run: pnpm run build
 
       - name: Deploy
+        env:
+          DEPLOY_KEY: ${{ secrets.WALLET_JSON }}
+          DEPLOY_ARNS_NAME: ${{ secrets.DEPLOY_ARNS_NAME }}
         working-directory: frontend
         run: pnpm run deploy

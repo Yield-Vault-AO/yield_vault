@@ -1,5 +1,6 @@
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useState } from "react";
+import toast from "react-hot-toast";
 import RiskAssessmentForm from "./RiskAssessmentForm";
 import PoolRecommendations from "./PoolRecommendations";
 import type { Pool } from "./types";
@@ -43,15 +44,21 @@ export default function RecommendationModal({
       console.log("Received recommendations:", recommendations);
 
       if (recommendations.length === 0) {
-        setError(
-          "No recommendations available at this time. Please try again later."
-        );
+        const errorMessage =
+          "No recommendations available at this time. Please try again later.";
+        // Show error toast only (remove setError to avoid duplicate display)
+        toast.error(errorMessage);
         setCurrentStep("form");
         return;
       }
 
       setRecommendedPools(recommendations);
       setCurrentStep("recommendations");
+
+      // Show success toast
+      toast.success(
+        `Successfully generated ${recommendations.length} AI-powered recommendations!`
+      );
     } catch (error) {
       console.error(
         "Failed to get recommendations from Manager Contract:",
@@ -59,11 +66,13 @@ export default function RecommendationModal({
       );
 
       // Show error and return to form
-      setError(
+      const errorMessage =
         error instanceof Error
           ? `Failed to get recommendations: ${error.message}`
-          : "Unable to connect to the recommendation service. Please try again later."
-      );
+          : "Unable to connect to the recommendation service. Please try again later.";
+
+      // Show error toast only (remove setError to avoid duplicate display)
+      toast.error(errorMessage);
       setCurrentStep("form");
     }
   };

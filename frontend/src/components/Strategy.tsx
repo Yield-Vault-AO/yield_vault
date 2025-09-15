@@ -11,8 +11,6 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Link } from "react-router-dom";
 import { useParams } from "react-router-dom";
-import verified from "../../public/verified.svg";
-import ao_token from "../../public/ao_logo.svg";
 import back_btn from "../../public/back.svg";
 import DashboardFooter from "./dashboard/dashboard_footer";
 import { createDataItemSigner, message, result } from "@permaweb/aoconnect";
@@ -21,7 +19,12 @@ import { usePools } from "../contexts/PoolContext";
 import { AO_TOKEN } from "../constants/yao_process";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import React from "react";
-import { getTokenInfo, formatTokenBalance, convertHumanAmountToBaseUnits } from "../helpers/token";
+import toast from "react-hot-toast";
+import {
+  getTokenInfo,
+  formatTokenBalance,
+  convertHumanAmountToBaseUnits,
+} from "../helpers/token";
 // import user_circle from "../../public/user-circle.svg";
 import {
   getUserAgents,
@@ -73,8 +76,8 @@ export default function StrategyDetail() {
   // Helper function to get token logo with fallback
   const getTokenLogo = useCallback(
     (tokenId?: string): string => {
-      if (!tokenId) return ao_token;
-      return tokenLogos[tokenId] || ao_token;
+      if (!tokenId) return "/ao_logo.svg";
+      return tokenLogos[tokenId] || "/ao_logo.svg";
     },
     [tokenLogos]
   );
@@ -97,7 +100,7 @@ export default function StrategyDetail() {
         // Use fallback logo on error
         setTokenLogos((prev) => ({
           ...prev,
-          [tokenId]: ao_token,
+          [tokenId]: "/ao_logo.svg",
         }));
       } finally {
         setLogoLoading((prev) => {
@@ -204,7 +207,9 @@ export default function StrategyDetail() {
         const baseToken = determineBaseToken(pool);
         if (baseToken) {
           const bal = await getTokenBalance(baseToken, userAddress);
-          const formatted = await formatTokenBalance(baseToken, bal, { maxFractionDigits: 6 });
+          const formatted = await formatTokenBalance(baseToken, bal, {
+            maxFractionDigits: 6,
+          });
           setBaseTokenBalance(formatted);
         }
       } catch {
@@ -257,10 +262,28 @@ export default function StrategyDetail() {
         );
         setRelevantAgent(match || null);
       }
+
+      // Show success toast
+      toast.success(
+        "Agent deployed successfully! Check the agent section to monitor your deployment.",
+        {
+          duration: 5000,
+          position: "top-right",
+        }
+      );
     } catch (e: unknown) {
       console.error("Agent deployment failed:", e);
-      setAgentError(
-        e instanceof Error ? e.message : "Agent deployment failed."
+      const errorMessage =
+        e instanceof Error ? e.message : "Agent deployment failed.";
+      setAgentError(errorMessage);
+
+      // Show error toast
+      toast.error(
+        `Deployment failed: ${errorMessage}. Please check the agent section for more details.`,
+        {
+          duration: 6000,
+          position: "top-right",
+        }
       );
     } finally {
       setIsDeployingAgent(false);
@@ -277,7 +300,10 @@ export default function StrategyDetail() {
       }
 
       const baseTokenProcess = determineBaseToken(pool);
-      const quantity = await convertHumanAmountToBaseUnits(baseTokenProcess, depositAmount);
+      const quantity = await convertHumanAmountToBaseUnits(
+        baseTokenProcess,
+        depositAmount
+      );
       const messageId = await message({
         process: baseTokenProcess,
         tags: [
@@ -716,7 +742,7 @@ export default function StrategyDetail() {
                           <div className="font-semibold text-[#1A2228] dark:text-[#EAEAEA]">
                             {formatMarketCap(
                               pool.token0_market_cap?.toString()
-                            )}
+                             )}
                           </div>
                         </div>
                         <div className="text-center p-2 bg-white/40 dark:bg-[#3D2B2B]/40 rounded border border-[#FECACA] dark:border-[#4A2F2F]">
@@ -935,7 +961,7 @@ export default function StrategyDetail() {
                   <h1 className="text-2xl font-bold text-[#1a2228] dark:text-[#EAEAEA] flex items-center space-x-4">
                     <span>{strategy?.name}</span>
                     <span className="gradient-card p-1 w-4 h-4 md:w-6 rounded-md md:h-6 flex items-center justify-center">
-                      <img src={verified} alt="verified" className="" />
+                      <img src={"/verified.svg"} alt="verified" className="" />
                     </span>
                   </h1>
                 </div>
@@ -1054,6 +1080,11 @@ export default function StrategyDetail() {
                           value={deployStartDate}
                           onChange={(e) => setDeployStartDate(e.target.value)}
                         />
+                        {!deployStartDate && (
+                          <p className="text-xs text-[#7e868c] dark:text-[#95A0A6] mt-1">
+                            ⚠️ Start date is required to deploy agent
+                          </p>
+                        )}
                       </div>
                       <div className="space-y-1">
                         <label className="text-xs text-[#7e868c] dark:text-[#95A0A6]">
@@ -1085,9 +1116,16 @@ export default function StrategyDetail() {
                       </div>
                     </div>
                     <Button
-                      className="w-full !mt-2 bg-[#D6EEF6] dark:bg-[#052834] hover:bg-[#97c2d1] text-[#25A8CF] dark:text-[#30CFFF] h-12"
+                      className="w-full !mt-2 bg-[#D6EEF6] dark:bg-[#052834] hover:bg-[#97c2d1] text-[#25A8CF] dark:text-[#30CFFF] h-12 disabled:cursor-not-allowed"
                       onClick={handleDeployAgent}
-                      disabled={isDeployingAgent || !userAddress}
+                      disabled={
+                        isDeployingAgent || !userAddress || !deployStartDate
+                      }
+                      title={
+                        !deployStartDate
+                          ? "Please select a start date to deploy agent"
+                          : ""
+                      }
                     >
                       {isDeployingAgent ? "Deploying..." : "Deploy Agent"}
                     </Button>
@@ -1098,7 +1136,7 @@ export default function StrategyDetail() {
                       <div className="flex items-center space-x-2 border border-[#DAD9D9E5] dark:border-[#222A30] p-2 rounded-3xl cursor-pointer">
                         <div className="w-6 h-6 rounded-full flex items-center justify-center">
                           <img
-                            src={ao_token}
+                            src={"/ao_logo.svg"}
                             alt="ao token"
                             className=" rounded-full"
                           />
@@ -1208,7 +1246,7 @@ export default function StrategyDetail() {
               </div>
               <div className="flex items-center space-x-2 gradient-card p-1.5 sm:p-2">
                 <img
-                  src={verified}
+                  src={"/verified.svg"}
                   alt="verified icon"
                   className="w-3 h-3 sm:w-4 sm:h-4"
                 />
