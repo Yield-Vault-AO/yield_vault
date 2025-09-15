@@ -1,7 +1,3 @@
-import twitterIcon from "/new-twitter.svg";
-import telegramIcon from "/telegram.svg";
-import logo from "../../../public/yao_logo.svg";
-import logo_white from "../../../public/yao_logo_white.svg";
 import { useTheme } from "@/hooks/useTheme";
 
 const Footer = () => {
@@ -22,7 +18,7 @@ const Footer = () => {
                 rel="noopener noreferrer"
               >
                 <img
-                  src={twitterIcon}
+                  src={"/new-twitter.svg"}
                   alt="twitter"
                   className="w-4 h-4 md:w-5 md:h-5"
                 />
@@ -34,7 +30,7 @@ const Footer = () => {
                 rel="noopener noreferrer"
               >
                 <img
-                  src={telegramIcon}
+                  src={"/telegram.svg"}
                   alt="telegram"
                   className="w-4 h-4 md:w-5 md:h-5"
                 />
@@ -108,7 +104,7 @@ const Footer = () => {
 
           <div className="md:col-span-1 col-span-2 text-center md:text-right flex items-center justify-center md:justify-end">
             <img
-              src={theme === "light" ? logo : logo_white}
+              src={theme === "light" ? "/yao_logo.svg" : "/yao_logo_white.svg"}
               alt="YAO"
               className="w-[100px] h-[100px] md:w-[200px] md:h-[200px]"
             />
