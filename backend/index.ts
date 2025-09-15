@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import LiquidOps, { tokens as LO_TOKENS, tokenData as LO_TOKEN_DATA } from "liquidops";
 import { createDataItemSigner } from "@permaweb/aoconnect";
+import Redis from "ioredis";
 
 const app = new Hono();
 
@@ -87,6 +88,50 @@ const WARM_MARGIN_MS = 5 * 60 * 1000; // 5 minutes before expiry
 const WARM_INTERVAL_MS = Math.max(5 * 60 * 1000, CACHE_TTL_MS - WARM_MARGIN_MS);
 let isWarmingPools = false;
 
+// Redis (optional) for externalized cache storage
+const REDIS_URL = Bun.env.REDIS_URL;
+let redis: Redis | null = null;
+if (REDIS_URL) {
+  try {
+    redis = new Redis(REDIS_URL);
+    redis.on("error", (e) => console.warn("Redis error:", e));
+  } catch (e) {
+    console.warn("Redis init failed:", e);
+    redis = null;
+  }
+}
+
+const CACHE_TTL_SECONDS = Math.max(1, Math.floor(CACHE_TTL_MS / 1000));
+const POOLS_CACHE_KEY = "pools_cache_v1";
+const aprKey = (ticker: string) => `apr:${ticker}`;
+
+async function readPoolsCache(): Promise<{ data?: unknown; timestamp?: number } | null> {
+  if (redis) {
+    try {
+      const val = await redis.get(POOLS_CACHE_KEY);
+      if (val) return JSON.parse(val);
+    } catch (e) {
+      console.warn("Redis get pools failed:", e);
+    }
+  }
+  // Fallback to in-memory
+  return poolsCache?.data ? poolsCache : null;
+}
+
+async function writePoolsCache(data: any[]): Promise<void> {
+  const now = Date.now();
+  const payload = JSON.stringify({ data, timestamp: now });
+  if (redis) {
+    try {
+      await redis.set(POOLS_CACHE_KEY, payload, "EX", CACHE_TTL_SECONDS);
+    } catch (e) {
+      console.warn("Redis set pools failed:", e);
+    }
+  }
+  // Always keep a minimal in-memory copy as a fallback
+  poolsCache = { data, timestamp: now };
+}
+
 // Initialize LiquidOps client with optional JWK signer from env
 let liquidOpsClient: LiquidOps | null = null;
 try {
@@ -103,8 +148,21 @@ try {
 }
 
 async function getLiquidOpsApr(ticker: string): Promise<number> {
-  // Use cache
+  // Use Redis cache first (if available)
   const now = Date.now();
+  if (redis) {
+    try {
+      const raw = await redis.get(aprKey(ticker));
+      if (raw) {
+        const parsed: any = JSON.parse(raw);
+        if (parsed && typeof parsed.apr === "number") return parsed.apr;
+      }
+    } catch (e) {
+      console.warn("Redis get APR failed:", e);
+    }
+  }
+
+  // Fallback to in-memory cache
   const cached = liquidOpsAprCache[ticker];
   if (cached && now - cached.timestamp < CACHE_TTL_MS) return cached.apr;
 
@@ -121,6 +179,14 @@ async function getLiquidOpsApr(ticker: string): Promise<number> {
   if (!Number.isFinite(aprPct) || aprPct < 0) aprPct = 0;
   if (aprPct > 100000) aprPct = 0; // safety guard
 
+  // Write-through to Redis (best-effort) and memory
+  if (redis) {
+    try {
+      await redis.set(aprKey(ticker), JSON.stringify({ apr: aprPct, timestamp: now }), "EX", CACHE_TTL_SECONDS);
+    } catch (e) {
+      console.warn("Redis set APR failed:", e);
+    }
+  }
   liquidOpsAprCache[ticker] = { apr: aprPct, timestamp: now };
   return aprPct;
 }
@@ -230,9 +296,9 @@ async function warmPoolsCache(): Promise<void> {
   try {
     const combined = await fetchAndCombinePools(sourceRoute, headers, "");
     if (combined.length > 0) {
-      poolsCache = { data: combined, timestamp: Date.now() };
+      await writePoolsCache(combined);
       console.log(
-        `[warm] Pools cache refreshed in ${Date.now() - started}ms with ${combined.length} items`
+        `[warm] Pools cache refreshed in ${Date.now() - started}ms with ${combined.length} items (store=${redis ? "redis" : "memory"})`
       );
     }
   } catch (e) {
@@ -263,12 +329,9 @@ app.get("/pools", async (c) => {
 
   // Check cache
   const now = Date.now();
-  if (
-    poolsCache.data &&
-    poolsCache.timestamp &&
-    now - poolsCache.timestamp < CACHE_TTL_MS
-  ) {
-    return c.json(poolsCache.data);
+  const cached = await readPoolsCache();
+  if (cached && cached.data && cached.timestamp && now - cached.timestamp < CACHE_TTL_MS) {
+    return c.json(cached.data as any[]);
   }
 
   let headersObj: unknown;
@@ -298,7 +361,7 @@ app.get("/pools", async (c) => {
   }
 
   // Cache and return combined
-  poolsCache = { data: combined, timestamp: now };
+  await writePoolsCache(combined);
   return c.json(combined);
 });
 
@@ -310,11 +373,29 @@ Bun.serve({ port, fetch: app.fetch });
 console.log(`listening on http://localhost:${port}`);
 
 // Schedule background warming to keep the cache hot
-setInterval(() => {
+let warmInterval: any | null = null;
+let warmInitTimeout: any | null = null;
+warmInterval = setInterval(() => {
   // Fire-and-forget background warm
   warmPoolsCache().catch(() => {});
 }, WARM_INTERVAL_MS);
+(warmInterval as any)?.unref?.();
 // Initial warm attempt shortly after server starts
-setTimeout(() => {
+warmInitTimeout = setTimeout(() => {
   warmPoolsCache().catch(() => {});
 }, 1000);
+(warmInitTimeout as any)?.unref?.();
+
+// Graceful shutdown: clear timers and close Redis
+const shutdown = async () => {
+  try {
+    if (warmInterval) clearInterval(warmInterval);
+    if (warmInitTimeout) clearTimeout(warmInitTimeout);
+  } catch {}
+  try {
+    await redis?.quit();
+  } catch {}
+  process.exit(0);
+};
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);

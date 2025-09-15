@@ -1,6 +1,6 @@
 ## Backend
 
-This Bun + Hono service exposes a `/pools` endpoint that proxies an upstream source of AO pools and augments them with LiquidOps supply pools. Results are normalized and cached in-memory for performance.
+This Bun + Hono service exposes a `/pools` endpoint that proxies an upstream source of AO pools and augments them with LiquidOps supply pools. Results are normalized and cached for performance. Caching is Redis-backed when `REDIS_URL` is provided, with an in-memory fallback if Redis is unavailable.
 
 ### Routes
 
@@ -12,8 +12,9 @@ This Bun + Hono service exposes a `/pools` endpoint that proxies an upstream sou
 
 ### Caching
 
-- Upstream + LiquidOps combined pools are cached in memory for 1 hour (TTL = 3,600,000 ms).
+- Upstream + LiquidOps combined pools are cached for 1 hour (TTL = 3,600,000 ms).
 - LiquidOps APRs per token are cached independently with the same TTL to avoid repeated APR computations within the cache window.
+- If `REDIS_URL` is set, both caches are stored in Redis (keys: `pools_cache_v1`, `apr:<TICKER>`); otherwise, the service falls back to in-memory storage.
 
 ### Environment Variables
 
@@ -23,6 +24,7 @@ Create a `.env` file in this directory with the following variables:
 - `HEADERS_JSON`: JSON object string of headers to forward upstream. Example: `{"Authorization":"Bearer ..."}`
 - `PORT` (optional): Port to serve on. Defaults to `3000`.
 - `LIQUIDOPS_WALLET_JWK` (optional): JSON string of a JWK wallet. If present, used to create a signer for the `liquidops` SDK; if omitted, the client runs in read-only mode where possible.
+- `REDIS_URL` (optional): Redis connection string. Example: `redis://localhost:6379` or cloud URLs like `rediss://:<password>@<host>:<port>`. When set, the service caches pools/APR in Redis.
 
 ### Local development
 
@@ -39,6 +41,15 @@ bun run --cwd backend dev
 # or run the built server
 bun run --cwd backend start
 ```
+
+To run with Redis locally (optional), you can export an environment variable or put it into `backend/.env`:
+
+```sh
+export REDIS_URL=redis://127.0.0.1:6379
+bun run --cwd backend dev
+```
+
+If Redis is not reachable, the service will log a warning and continue using in-memory cache.
 
 ### Notes
 
