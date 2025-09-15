@@ -291,8 +291,8 @@ export default function Dashboard() {
   const filteredStrategies = useMemo(() => {
     if (protocolFilter === "All") return fetchedStrategies;
     const target = normalize(protocolFilter);
-    return fetchedStrategies.filter((s: { protocol?: string }) =>
-      normalize(s.protocol) === target
+    return fetchedStrategies.filter(
+      (s: { protocol?: string }) => normalize(s.protocol) === target
     );
   }, [fetchedStrategies, protocolFilter]);
 
@@ -334,7 +334,9 @@ export default function Dashboard() {
   const dynamicTokenCards = useMemo(() => {
     // Mirror the same ordering as the table (sortedStrategies), then take the first 4
     return sortedStrategies
-      .filter((s) => (randomSelectedPoolId ? s.id === randomSelectedPoolId : true))
+      .filter((s) =>
+        randomSelectedPoolId ? s.id === randomSelectedPoolId : true
+      )
       .slice(0, 4)
       .map((strategy) => {
         const apyPct = parseApyPct(strategy.apy);
@@ -357,12 +359,17 @@ export default function Dashboard() {
           _score: compositeScore(apyPct, Number(strategy.riskScore || 0)),
         };
       });
-  }, [sortedStrategies, randomSelectedPoolId, fmtUSD, compositeScore, parseApyPct]);
+  }, [
+    sortedStrategies,
+    randomSelectedPoolId,
+    fmtUSD,
+    compositeScore,
+    parseApyPct,
+  ]);
 
   const displayTokenCards = useMemo(() => {
     return dynamicTokenCards;
   }, [dynamicTokenCards]);
-
 
   return (
     <div className="min-h-screen bg-[#f8f7f4] dark:bg-[#0F1419]">
@@ -392,7 +399,9 @@ export default function Dashboard() {
               <div className="flex items-center space-x-4">
                 {/* YAO Logo */}
                 <img
-                  src={theme.theme === "light" ? "/YAO.svg" : "/yao_text_white.svg"}
+                  src={
+                    theme.theme === "light" ? "/YAO.svg" : "/yao_text_white.svg"
+                  }
                   alt="yao_text"
                   className="w-[127px] h-[48px] mt-1"
                 />
@@ -589,7 +598,9 @@ export default function Dashboard() {
                     Dexi
                   </Button> */}
                   <Button
-                    variant={protocolFilter === "Botega" ? "default" : "outline"}
+                    variant={
+                      protocolFilter === "Botega" ? "default" : "outline"
+                    }
                     size="sm"
                     className="border border-[#EAEAEA] dark:border-[#192127] text-[#565E64] hover:bg-[#ececec95] dark:hover:bg-[#161e2484] text-xs sm:text-sm"
                     onClick={() => setProtocolFilter("Botega")}
@@ -597,7 +608,9 @@ export default function Dashboard() {
                     Botega
                   </Button>
                   <Button
-                    variant={protocolFilter === "Liquid Ops" ? "default" : "outline"}
+                    variant={
+                      protocolFilter === "Liquid Ops" ? "default" : "outline"
+                    }
                     size="sm"
                     className="border border-[#EAEAEA] dark:border-[#192127] text-[#565E64] hover:bg-[#ececec95] dark:hover:bg-[#161e2484] text-xs sm:text-sm"
                     onClick={() => setProtocolFilter("Liquid Ops")}
@@ -629,7 +642,9 @@ export default function Dashboard() {
                     All
                   </Button>
                   <Button
-                    variant={protocolFilter === "Liquid Ops" ? "default" : "outline"}
+                    variant={
+                      protocolFilter === "Liquid Ops" ? "default" : "outline"
+                    }
                     size="sm"
                     className="border border-[#EAEAEA] dark:border-[#192127] text-[#565E64] hover:bg-[#ececec95] dark:hover:bg-[#161e2484] text-xs sm:text-sm"
                     onClick={() => setProtocolFilter("Liquid Ops")}
@@ -637,7 +652,9 @@ export default function Dashboard() {
                     Liquid Ops
                   </Button>
                   <Button
-                    variant={protocolFilter === "Botega" ? "default" : "outline"}
+                    variant={
+                      protocolFilter === "Botega" ? "default" : "outline"
+                    }
                     size="sm"
                     className="border border-[#EAEAEA] dark:border-[#192127] text-[#565E64] hover:bg-[#ececec95] dark:hover:bg-[#161e2484] text-xs sm:text-sm"
                     onClick={() => setProtocolFilter("Botega")}
@@ -768,9 +785,15 @@ export default function Dashboard() {
                             ? s.id === randomSelectedPoolId
                             : true
                         )
-                        .map((strategy, index) => (
-                          strategy.protocol === "LiquidOps" && strategy.external_url ? (
-                            <a key={index} href={strategy.external_url} target="_blank" rel="noopener noreferrer">
+                        .map((strategy, index) =>
+                          strategy.protocol === "LiquidOps" &&
+                          strategy.external_url ? (
+                            <a
+                              key={index}
+                              href={strategy.external_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
                               <div
                                 className={`grid grid-cols-7 gap-4 p-4 mb-2 rounded-br-lg rounded-bl-lg bg-[#F3F3F3] hover:bg-[#f7f7f6] dark:hover:bg-[#20282E] dark:bg-[#141C22] transition-colors cursor-pointer relative`}
                               >
@@ -784,19 +807,22 @@ export default function Dashboard() {
                                         className=""
                                       />
                                     </span>
-                                    {strategy.protocol !== "LiquidOps" && strategy.token_icon2 && (
-                                      <span className="w-5 h-5 md:w-8 md:h-8 rounded-2xl bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#10181D] dark:to-[#121A21] backdrop-blur-md dark:text-white flex items-center justify-center transition-all duration-200 hover:scale-105 shadow-lg -translate-x-2">
-                                        <img
-                                          src={strategy.token_icon2}
-                                          alt={strategy.name}
-                                          className=" "
-                                        />
-                                      </span>
-                                    )}
+                                    {strategy.protocol !== "LiquidOps" &&
+                                      strategy.token_icon2 && (
+                                        <span className="w-5 h-5 md:w-8 md:h-8 rounded-2xl bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#10181D] dark:to-[#121A21] backdrop-blur-md dark:text-white flex items-center justify-center transition-all duration-200 hover:scale-105 shadow-lg -translate-x-2">
+                                          <img
+                                            src={strategy.token_icon2}
+                                            alt={strategy.name}
+                                            className=" "
+                                          />
+                                        </span>
+                                      )}
                                   </div>
                                   <div className="space-y-1">
                                     <div className="font-medium text-[#1a2228] dark:text-[#FEFEFD] flex items-center space-x-2">
-                                      <span>{stripBotegaLP(strategy.name)}</span>
+                                      <span>
+                                        {stripBotegaLP(strategy.name)}
+                                      </span>
                                       {strategy.badges.map((badge, i) => (
                                         <div className="flex items-center space-x-2">
                                           <span className="w-4 h-4 md:w-8 md:h-6 rounded-lg bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#10181D] dark:to-[#121A21] backdrop-blur-md dark:text-white flex items-center justify-center transition-all duration-200 hover:scale-105 shadow-lg">
@@ -820,9 +846,9 @@ export default function Dashboard() {
                                       ))}
                                     </div>
 
-                                    <div className=" flex items-center space-x-1">
+                                    <div className="flex items-center space-x-1">
                                       <img
-                                        src={strategy.protocol_icon}
+                                        src={"/liquidops_logo.png"}
                                         alt={strategy.name}
                                         className="w-4 h-4"
                                       />
@@ -854,12 +880,13 @@ export default function Dashboard() {
                                       <div className="text-[#7e868c] text-sm text-center flex items-center justify-center space-x-1">
                                         <span>{strategy.points}</span>
 
-                                        <span>
+                                        {/* <span>
                                           <img
-                                            src={"/user-circle.svg"}
+                                            className="w-4 h-4"
+                                            src={"/liquidops_logo.png"}
                                             alt={strategy.name}
                                           />
-                                        </span>
+                                        </span> */}
                                       </div>
                                     )}
                                   </div>
@@ -896,7 +923,10 @@ export default function Dashboard() {
 
                                 <div className="text-center ">
                                   <button className="p-1.5 hover:bg-[#e9e9e9] w-10 h-10 text-center rounded-lg bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#10181D] dark:to-[#121A21] backdrop-blur-md dark:text-white transition-all duration-200 hover:scale-105 shadow-lg">
-                                    <img src={"/help-circle.svg"} alt={strategy.name} />
+                                    <img
+                                      src={"/help-circle.svg"}
+                                      alt={strategy.name}
+                                    />
                                   </button>
                                 </div>
                               </div>
@@ -929,7 +959,9 @@ export default function Dashboard() {
                                   </div>
                                   <div className="space-y-1">
                                     <div className="font-medium text-[#1a2228] dark:text-[#FEFEFD] flex items-center space-x-2">
-                                      <span>{stripBotegaLP(strategy.name)}</span>
+                                      <span>
+                                        {stripBotegaLP(strategy.name)}
+                                      </span>
                                       {strategy.badges.map((badge, i) => (
                                         <div className="flex items-center space-x-2">
                                           <span className="w-4 h-4 md:w-8 md:h-6 rounded-lg bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#10181D] dark:to-[#121A21] backdrop-blur-md dark:text-white flex items-center justify-center transition-all duration-200 hover:scale-105 shadow-lg">
@@ -955,7 +987,7 @@ export default function Dashboard() {
 
                                     <div className=" flex items-center space-x-1">
                                       <img
-                                        src={strategy.protocol_icon}
+                                        src={"/Botega.png"}
                                         alt={strategy.name}
                                         className="w-4 h-4"
                                       />
@@ -987,12 +1019,13 @@ export default function Dashboard() {
                                       <div className="text-[#7e868c] text-sm text-center flex items-center justify-center space-x-1">
                                         <span>{strategy.points}</span>
 
-                                        <span>
+                                        {/* <span className="">
                                           <img
-                                            src={"/user-circle.svg"}
+                                            src={"/Botega.png"}
+                                            className="w-4 h-4"
                                             alt={strategy.name}
                                           />
-                                        </span>
+                                        </span> */}
                                       </div>
                                     )}
                                   </div>
@@ -1029,13 +1062,16 @@ export default function Dashboard() {
 
                                 <div className="text-center ">
                                   <button className="p-1.5 hover:bg-[#e9e9e9] w-10 h-10 text-center rounded-lg bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#10181D] dark:to-[#121A21] backdrop-blur-md dark:text-white transition-all duration-200 hover:scale-105 shadow-lg">
-                                    <img src={"/help-circle.svg"} alt={strategy.name} />
+                                    <img
+                                      src={"/help-circle.svg"}
+                                      alt={strategy.name}
+                                    />
                                   </button>
                                 </div>
                               </div>
                             </Link>
                           )
-                        ))}
+                        )}
                 </CardContent>
               </Card>
             </div>
@@ -1046,9 +1082,14 @@ export default function Dashboard() {
                 .filter((s) =>
                   randomSelectedPoolId ? s.id === randomSelectedPoolId : true
                 )
-                .map((strategy, index) => (
+                .map((strategy, index) =>
                   strategy.protocol === "LiquidOps" && strategy.external_url ? (
-                    <a key={index} href={strategy.external_url} target="_blank" rel="noopener noreferrer">
+                    <a
+                      key={index}
+                      href={strategy.external_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       <div className="relative">
                         {strategy.isStrategy && (
                           <div className="absolute inset-0 bg-white/60 dark:bg-[#141c2298] backdrop-blur-[0.5px] opacity-90 z-10 pointer-events-none rounded-lg"></div>
@@ -1085,7 +1126,9 @@ export default function Dashboard() {
                                       variant="secondary"
                                       className="bg-gradient-to-br from-white to-[#EAEAEA] dark:bg-gradient-to-br dark:from-[#10181D] dark:to-[#121A21] backdrop-blur-md dark:text-white shadow-sm text-[#10181D] text-xs px-1 sm:px-2 py-1"
                                     >
-                                      {badge === "Hot & New" ? "Hot & New" : badge}
+                                      {badge === "Hot & New"
+                                        ? "Hot & New"
+                                        : badge}
                                     </Badge>
                                   ))}
                                 </div>
@@ -1094,14 +1137,20 @@ export default function Dashboard() {
                               <div className="flex items-center justify-between mb-2 sm:mb-3">
                                 {/* APY */}
                                 <div className="text-center">
-                                  <p className="text-[#7e868c] text-xs mb-1">APY</p>
-                                  <p className={`font-semibold text-xs sm:text-sm ${strategy.apyColor}`}>
+                                  <p className="text-[#7e868c] text-xs mb-1">
+                                    APY
+                                  </p>
+                                  <p
+                                    className={`font-semibold text-xs sm:text-sm ${strategy.apyColor}`}
+                                  >
                                     {strategy.apy}
                                   </p>
                                 </div>
                                 {/* Risk */}
                                 <div className="text-center">
-                                  <p className="text-[#7e868c] text-xs mb-1">RISK</p>
+                                  <p className="text-[#7e868c] text-xs mb-1">
+                                    RISK
+                                  </p>
                                   <div className="flex space-x-1">
                                     <div className="text-center">
                                       {strategy.isStrategy ? (
@@ -1113,7 +1162,9 @@ export default function Dashboard() {
                                       ) : (
                                         <div className="flex justify-center">
                                           <div className="flex space-x-1.5">
-                                            {generateRiskBars(strategy.riskScore || 60)}
+                                            {generateRiskBars(
+                                              strategy.riskScore || 60
+                                            )}
                                           </div>
                                         </div>
                                       )}
@@ -1122,7 +1173,9 @@ export default function Dashboard() {
                                 </div>
                                 {/* TVL */}
                                 <div className="text-center">
-                                  <p className="text-[#7e868c] text-xs mb-1">TVL</p>
+                                  <p className="text-[#7e868c] text-xs mb-1">
+                                    TVL
+                                  </p>
                                   <p className="font-semibold text-[#565E64] text-xs sm:text-sm">
                                     {strategy.tvl}
                                   </p>
@@ -1237,7 +1290,7 @@ export default function Dashboard() {
                       </div>
                     </Link>
                   )
-                ))}
+                )}
             </div>
 
             {/* Pagination */}
@@ -1357,7 +1410,8 @@ export default function Dashboard() {
                   </span>
                   <span className="text-[#7E868C] dark:text-[#95A0A6]">•</span>
                   <span className="text-sm text-[#7E868C] dark:text-[#95A0A6]">
-                    Showing {currentStrategies.length} of {filteredStrategies.length} strategies
+                    Showing {currentStrategies.length} of{" "}
+                    {filteredStrategies.length} strategies
                   </span>
                 </div>
               </div>
