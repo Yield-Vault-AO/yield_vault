@@ -59,9 +59,9 @@ jobs:
         working-directory: frontend
         run: pnpm run tsc
 
-      # - name: Build
-      #   working-directory: frontend
-      #   run: pnpm run build
+      - name: Build
+        working-directory: frontend
+        run: pnpm run build
 
       - name: Deploy
         env:
