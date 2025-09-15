@@ -16,6 +16,7 @@
   "dependencies": {
     "@permaweb/aoconnect": "^0.0.90",
     "hono": "^4.9.4",
+    "ioredis": "^5.7.0",
     "liquidops": "^1.2.28"
   }
 }

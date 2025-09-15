@@ -533,7 +533,7 @@ export default function Dashboard() {
 
                       <div className="text-[#1a2228] dark:text-[#FEFEFD] flex flex-col items-center font-semibold">
                         <span className="text-base">
-                          {/* {token?.amount} */} {token?.symbol}
+                          {/* {token?.amount} */} {stripBotegaLP(token?.symbol)}
                         </span>
                         <span className="text-[#7e868c] text-sm">
                           {token?.value}
