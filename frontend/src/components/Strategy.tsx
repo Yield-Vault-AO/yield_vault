@@ -11,8 +11,6 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Link } from "react-router-dom";
 import { useParams } from "react-router-dom";
-import verified from "../../public/verified.svg";
-import ao_token from "../../public/ao_logo.svg";
 import back_btn from "../../public/back.svg";
 import DashboardFooter from "./dashboard/dashboard_footer";
 import { createDataItemSigner, message, result } from "@permaweb/aoconnect";
@@ -78,8 +76,8 @@ export default function StrategyDetail() {
   // Helper function to get token logo with fallback
   const getTokenLogo = useCallback(
     (tokenId?: string): string => {
-      if (!tokenId) return ao_token;
-      return tokenLogos[tokenId] || ao_token;
+      if (!tokenId) return "/ao_logo.svg";
+      return tokenLogos[tokenId] || "/ao_logo.svg";
     },
     [tokenLogos]
   );
@@ -102,7 +100,7 @@ export default function StrategyDetail() {
         // Use fallback logo on error
         setTokenLogos((prev) => ({
           ...prev,
-          [tokenId]: ao_token,
+          [tokenId]: "/ao_logo.svg",
         }));
       } finally {
         setLogoLoading((prev) => {
@@ -744,7 +742,7 @@ export default function StrategyDetail() {
                           <div className="font-semibold text-[#1A2228] dark:text-[#EAEAEA]">
                             {formatMarketCap(
                               pool.token0_market_cap?.toString()
-                            )}
+                             )}
                           </div>
                         </div>
                         <div className="text-center p-2 bg-white/40 dark:bg-[#3D2B2B]/40 rounded border border-[#FECACA] dark:border-[#4A2F2F]">
@@ -963,7 +961,7 @@ export default function StrategyDetail() {
                   <h1 className="text-2xl font-bold text-[#1a2228] dark:text-[#EAEAEA] flex items-center space-x-4">
                     <span>{strategy?.name}</span>
                     <span className="gradient-card p-1 w-4 h-4 md:w-6 rounded-md md:h-6 flex items-center justify-center">
-                      <img src={verified} alt="verified" className="" />
+                      <img src={"/verified.svg"} alt="verified" className="" />
                     </span>
                   </h1>
                 </div>
@@ -1138,7 +1136,7 @@ export default function StrategyDetail() {
                       <div className="flex items-center space-x-2 border border-[#DAD9D9E5] dark:border-[#222A30] p-2 rounded-3xl cursor-pointer">
                         <div className="w-6 h-6 rounded-full flex items-center justify-center">
                           <img
-                            src={ao_token}
+                            src={"/ao_logo.svg"}
                             alt="ao token"
                             className=" rounded-full"
                           />
@@ -1248,7 +1246,7 @@ export default function StrategyDetail() {
               </div>
               <div className="flex items-center space-x-2 gradient-card p-1.5 sm:p-2">
                 <img
-                  src={verified}
+                  src={"/verified.svg"}
                   alt="verified icon"
                   className="w-3 h-3 sm:w-4 sm:h-4"
                 />

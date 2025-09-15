@@ -7,8 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import back_btn from "../../public/back.svg";
-import ao_logo from "../../public/ao_logo.svg";
 import DashboardFooter from "./dashboard/dashboard_footer";
 import {
   getAgentInfo,
@@ -261,7 +259,7 @@ export default function Agent() {
           to="/dashboard"
           className="flex items-center space-x-2 text-[#7e868c] hover:text-[#1a2228] mb-6"
         >
-          <img src={back_btn} alt="back btn" />
+          <img src={"/back.svg"} alt="back btn" />
           <span className="text-sm">GO BACK</span>
         </Link>
 
@@ -551,7 +549,7 @@ export default function Agent() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2 border border-[#DAD9D9E5] dark:border-[#222A30] p-2 rounded-3xl cursor-pointer">
                       <div className="w-6 h-6 rounded-full flex items-center justify-center">
-                        <img src={ao_logo} alt="ao token" />
+                        <img src={"/ao_logo.svg"} alt="ao token" />
                       </div>
                       <span className="font-medium dark:text-[#EAEAEA]">
                         AO

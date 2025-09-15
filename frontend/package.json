@@ -10,7 +10,7 @@
     "tsc": "tsc --noEmit",
     "preview": "vite preview",
     "test-ci": "../test-ci.sh",
-    "deploy": "pnpm run build && permaweb-deploy --deploy-folder ./dist --arns-name $DEPLOY_ARNS_NAME"
+    "deploy": "permaweb-deploy --deploy-folder ./dist --arns-name $DEPLOY_ARNS_NAME"
   },
   "dependencies": {
     "@arweave-wallet-kit/browser-wallet-strategy": "^0.1.1",
@@ -33,6 +33,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "framer-motion": "^12.23.12",
+    "liquidops": "^1.2.28",
     "lucide-react": "^0.539.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",

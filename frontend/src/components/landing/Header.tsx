@@ -1,11 +1,8 @@
 import { ChevronDown, MoonIcon, SunIcon } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useTheme } from "@/hooks/useTheme";
-import logo from "../../../public/yao_logo.svg";
-import yao_logo_white from "../../../public/yao_logo_white.svg";
 import ConnectButton from "../ConnectButton";
 import { Link } from "react-router-dom";
-import aox_logo from "../../../public/aox.svg";
 
 const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -43,9 +40,9 @@ const Header = () => {
       <div className="flex items-center space-x-4 md:space-x-8">
         <Link to={"/"} className="text-xl md:text-2xl font-bold text-[#1a2228]">
           {theme === "light" ? (
-            <img src={logo} alt="YAO" className="w-16 md:w-auto" />
+            <img src={"/yao_logo.svg"} alt="YAO" className="w-16 md:w-auto" />
           ) : (
-            <img src={yao_logo_white} alt="YAO" className="w-16 md:w-auto" />
+            <img src={"/yao_logo_white.svg"} alt="YAO" className="w-16 md:w-auto" />
           )}
         </Link>
         <nav className="hidden md:flex space-x-6">
@@ -84,7 +81,7 @@ const Header = () => {
                         className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors md:flex items-center space-x-2"
                       >
                         <img
-                          src={aox_logo}
+                          src={"/aox.svg"}
                           alt="AOX"
                           className="w-4 md:w-5 h-4 md:h-5"
                         />

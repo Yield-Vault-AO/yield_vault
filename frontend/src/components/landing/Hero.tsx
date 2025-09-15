@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import yao_text from "../../../public/yao_text_white.svg";
 import { useTheme } from "@/hooks/useTheme";
 import { Link } from "react-router-dom";
 
@@ -143,7 +142,7 @@ const Hero = () => {
                     />
                   ) : (
                     <img
-                      src={yao_text}
+                      src={"/yao_text_white.svg"}
                       alt="YAO"
                       // className="w-32 md:w-auto mb-2 md:mb-6"
                     />
