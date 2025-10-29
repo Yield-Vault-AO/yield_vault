@@ -53,4 +53,22 @@ function mod.lend(params)
     })
 end
 
+-- Withdraw lent tokens from LiquidOps by redeeming oTokens
+function mod.unLend(params)
+    params = params or {}
+    local tokenId = ensureToken(params.tokenId)
+    local quantity = ensureQuantity(params.quantity)
+    local oTokenId = ensureToken(params.oTokenId)
+
+    ao.send({
+        Target = oTokenId,
+        Action = 'Redeem',
+        Quantity = quantity,
+        ['Protocol-Name'] = 'LiquidOps',
+        ['Analytics-Tag'] = 'UnLend',
+        token = tokenId,
+        timestamp = tostring(os.time() * 1000)
+    })
+end
+
 return mod
