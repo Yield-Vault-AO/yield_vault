@@ -1,6 +1,6 @@
 import { useTheme } from "@/hooks/useTheme";
-import logo_white from "../../../public/yao_logo_white.svg";
-import logo from "../../../public/yao_logo.svg";
+// import logo_white from "../../../public/yao_logo_white_new.svg";
+// import logo from "../../../public/yao_logo_dark.svg";
 
 const WtfIsYaoSection = () => {
   const { theme } = useTheme();
@@ -55,11 +55,19 @@ const WtfIsYaoSection = () => {
         {/* Right side - Stylized logo */}
         <div className="lg:col-span-9 flex justify-end transform translate-x-0 md:translate-x-40">
           <div className="w-full h-[150px] md:w-[676px] md:h-[400px] text-sm md:text-base rounded-lg bg-gradient-to-br from-[#F8F7F4] to-[#E6E6E6] dark:from-[#0E161C] dark:to-[#11191F] dark:text-[#1A2228] backdrop-blur-md dark:backdrop-blur-lg flex flex-col md:items-start items-center justify-center transition-all duration-200 hover:scale-105 shadow-lg cursor-pointer p-4 md:px-8 md:py-12">
-            <img
+            {/* <img
               src={theme === "light" ? logo : logo_white}
               alt="YAO"
               className="w-[100px] h-[100px] md:w-[300px] md:h-[300px]"
-            />
+            /> */}
+
+            <video
+              src="/video/yao_vid2.mp4"
+              autoPlay
+              loop
+              muted
+              className="w-[100px] h-[100px] md:w-[300px] md:h-[300px] bg-transparent"
+            ></video>
           </div>
         </div>
       </div>
