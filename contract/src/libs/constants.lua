@@ -13,6 +13,9 @@ local constants = {
     -- Fee Process ID
     FEE_PROCESS_ID = "oOx8YhMyPkeV78LqGw2_BZSKSb4LzwdKEPo0_xwCdLk",
 
+    -- LiquidOps Process
+    LIQUIDOPS_PROCESS_ID = nil,
+
     -- Strategy Configuration
     SWAP_PERCENTAGE = 50,  -- 50% for swapping
     LP_PERCENTAGE = 50,    -- 50% for liquidity provision
