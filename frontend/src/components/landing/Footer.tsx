@@ -104,7 +104,9 @@ const Footer = () => {
 
           <div className="md:col-span-1 col-span-2 text-center md:text-right flex items-center justify-center md:justify-end">
             <img
-              src={theme === "light" ? "/yao_logo.svg" : "/yao_logo_white.svg"}
+              src={
+                theme === "light" ? "/yao_logo_dark.svg" : "/yao_logo_dark.svg"
+              }
               alt="YAO"
               className="w-[100px] h-[100px] md:w-[200px] md:h-[200px]"
             />

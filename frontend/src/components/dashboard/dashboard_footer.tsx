@@ -1,5 +1,5 @@
 import yao_logo from "../../../public/yao_logo.svg";
-import yao_logo_white from "../../../public/yao_logo_white.svg";
+import yao_logo_white from "../../../public/yao_logo_white_new.svg";
 import { useTheme } from "@/hooks/useTheme";
 
 const DashboardFooter = () => {

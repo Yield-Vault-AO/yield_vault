@@ -40,9 +40,11 @@ const Header = () => {
       <div className="flex items-center space-x-4 md:space-x-8">
         <Link to={"/"} className="text-xl md:text-2xl font-bold text-[#1a2228]">
           {theme === "light" ? (
-            <img src={"/yao_logo.svg"} alt="YAO" className="w-16 md:w-auto" />
+            <img src={"/yao_logo_dark.svg"} alt="YAO" className="w-12" />
           ) : (
-            <img src={"/yao_logo_white.svg"} alt="YAO" className="w-16 md:w-auto" />
+            // <img src={"/yao_logo_white_new.svg"} alt="YAO" className="w-12" />
+            // <img src={"/yao_logo_white_new.svg"} alt="YAO" className="w-12" />
+            <img src={"/yao_logo_dark.svg"} alt="YAO" className="w-12" />
           )}
         </Link>
         <nav className="hidden md:flex space-x-6">
