@@ -13,6 +13,7 @@ import { getRandomRecommendationPoolId } from "../services/aoService";
 import { usePools } from "../contexts/PoolContext";
 import { getUserAgents, type AgentRecord } from "../services/aoService";
 import type { Strategy as StrategyType } from "../contexts/PoolContext";
+import { Plus } from "lucide-react";
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState("strategies");
@@ -485,6 +486,14 @@ export default function Dashboard() {
 
           <div className="flex flex-col md:flex-row items-center gap-2  mb-1 mt-5 md:mt-0">
             <RecommendButton />
+            <Link to="/dashboard/create" className="w-full animate-bounce transition-all duration-200 md:w-auto">
+              <Button
+                className="bg-[#1FE9F7] hover:bg-[#1FE9F7]/80 text-[#090909] transition-all duration-200 h-10 md:h-12 px-6 w-full md:w-auto font-semibold"
+              >
+              <Plus  />
+                Create Strategy
+              </Button>
+            </Link>
             <Button
               onClick={handleRandomRecommend}
               disabled={randomLoading}

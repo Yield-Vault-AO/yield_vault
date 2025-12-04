@@ -1,5 +1,5 @@
-import yao_logo from "../../../public/yao_logo.svg";
-import yao_logo_white from "../../../public/yao_logo_white_new.svg";
+// import yao_logo from "../../../public/yao_logo.svg";
+// import yao_logo_white from "../../../public/yao_logo_white_new.svg";
 import { useTheme } from "@/hooks/useTheme";
 
 const DashboardFooter = () => {
@@ -12,7 +12,7 @@ const DashboardFooter = () => {
         <div className="hidden md:flex justify-between items-center">
           <div className="flex items-center space-x-4">
             <img
-              src={theme == "light" ? yao_logo : yao_logo_white}
+              src={"/yao_logo_dark.svg"}
               alt="logo"
               className="w-6 h-6"
             />
@@ -81,7 +81,7 @@ const DashboardFooter = () => {
             {/* Logo */}
             <div className="flex items-center">
               <img
-                src={theme == "light" ? yao_logo : yao_logo_white}
+                src={"/yao_logo_dark.svg"}
                 alt="logo"
                 className="w-8 h-8"
               />

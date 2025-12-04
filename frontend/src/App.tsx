@@ -5,6 +5,7 @@ import HomePage from "./components/landing/HomePage";
 import Dashboard from "./components/Dashboard";
 import Strategy from "./components/Strategy";
 import Agent from "./components/Agent";
+import CreateStrategy from "./components/CreateStrategy";
 import YaoChatbot from "./components/chatbot/YaoChatbot";
 import { PoolProvider } from "./contexts/PoolContext";
 
@@ -21,6 +22,7 @@ function App() {
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/dashboard/create" element={<CreateStrategy />} />
               <Route path="/strategy/:id" element={<Strategy />} />
               <Route path="/agent/:id" element={<Agent />} />
             </Routes>
