@@ -1,5 +1,6 @@
 import { ConnectButton as ArweaveConnectButton } from "@arweave-wallet-kit/react";
 import "./ConnectButton.css";
+import { ConnectButton as EvmConnectButton } from '@rainbow-me/rainbowkit';
 
 const ConnectButton = () => {
   return (
@@ -10,6 +11,9 @@ const ConnectButton = () => {
         profileModal={true}
         className="custom-connect-button"
       />
+
+      {/* <EvmConnectButton /> */}
+
     </div>
   );
 };

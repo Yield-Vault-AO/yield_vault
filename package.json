@@ -28,6 +28,10 @@
   },
   "type": "module",
   "dependencies": {
-    "@permaweb/aoconnect": "^0.0.90"
+    "@permaweb/aoconnect": "^0.0.90",
+    "@rainbow-me/rainbowkit": "^2.2.10",
+    "@tanstack/react-query": "^5.90.12",
+    "viem": "2.x",
+    "wagmi": "^3.1.0"
   }
 }
