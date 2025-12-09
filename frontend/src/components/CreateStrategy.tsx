@@ -7,6 +7,7 @@ import ChainSelector, { AVAILABLE_CHAINS } from "./create/ChainSelector";
 import StrategyPreview, { type Strategy } from "./create/StrategyPreview";
 import DeploymentDetails from "./create/DeploymentDetails";
 import toast from "react-hot-toast";
+import { useStrategyGeneration } from "@/hooks/useStrategyGeneration";
 
 const STEPS = [
   { label: "Prompt" },
@@ -16,13 +17,14 @@ const STEPS = [
 
 export default function CreateStrategy() {
   const navigate = useNavigate();
+  const strategyMutation = useStrategyGeneration();
 
   const [prompt, setPrompt] = useState("");
   const [selectedChain, setSelectedChain] = useState(AVAILABLE_CHAINS[0].id);
   const [aiStrategy, setAiStrategy] = useState<Strategy | null>(null);
-  const [generating, setGenerating] = useState(false);
   const [deploying, setDeploying] = useState(false);
 
+  const generating = strategyMutation.isPending;
   const hasStrategy = !!aiStrategy;
   const currentStep = hasStrategy ? 2 : prompt ? 1 : 0;
 
@@ -32,53 +34,23 @@ export default function CreateStrategy() {
       return;
     }
 
-    setGenerating(true);
     setAiStrategy(null);
 
-    try {
-      // API endpoint integration-ready
-      const res = await fetch("/api/ai/strategy", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, chain: selectedChain }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => null);
-        throw new Error(data?.error ?? "Failed to generate strategy");
+    strategyMutation.mutate(
+      { prompt, chain: selectedChain },
+      {
+        onSuccess: (strategy) => {
+          setAiStrategy(strategy);
+          toast.success("Strategy generated successfully!");
+        },
+        onError: (error) => {
+          const message =
+            error instanceof Error ? error.message : "Failed to generate strategy";
+          toast.error(message);
+          console.error("Strategy generation error:", error);
+        },
       }
-
-      const data = (await res.json()) as { strategy: Strategy };
-      setAiStrategy(data.strategy);
-      toast.success("Strategy generated successfully!");
-    } catch (e) {
-      const message = e instanceof Error ? e.message : "Unexpected error";
-      toast.error(message);
-      console.error("Strategy generation error:", e);
-
-      // For demo purposes when API doesn't exist yet, show a mock strategy
-      if (message.includes("Failed to fetch") || message.includes("404")) {
-        toast("API not available yet. Showing demo strategy.", {
-          icon: "ℹ️",
-        });
-
-        // Mock strategy for demonstration
-        setAiStrategy({
-          name: "Demo Yield Strategy",
-          summary:
-            "This is a demonstration strategy. Connect the AI API endpoint to generate real strategies based on your prompt.",
-          inputToken: "USDC",
-          riskLevel: "Medium",
-          steps: [
-            { action: "SWAP", label: "Swap USDC to target token" },
-            { action: "SUPPLY", label: "Supply to lending protocol" },
-            { action: "MONITOR", label: "Monitor position health" },
-          ],
-        });
-      }
-    } finally {
-      setGenerating(false);
-    }
+    );
   };
 
   const handleDeploy = async () => {
