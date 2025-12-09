@@ -12,7 +12,7 @@ const ConnectButton = () => {
         className="custom-connect-button"
       />
 
-      {/* <EvmConnectButton /> */}
+      <EvmConnectButton />
 
     </div>
   );

@@ -15,7 +15,7 @@ const queryClient = new QueryClient();
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ThemeProvider>
-      {/* <EvmWalletProvider> */}
+      <EvmWalletProvider>
         <WalletProvider>
           <QueryClientProvider client={queryClient}>
             <ConfigProvider>
@@ -27,7 +27,7 @@ createRoot(document.getElementById("root")!).render(
             </ConfigProvider>
           </QueryClientProvider>
         </WalletProvider>
-      {/* </EvmWalletProvider> */}
+      </EvmWalletProvider>
     </ThemeProvider>
   </StrictMode>
 );
