@@ -8,6 +8,12 @@ import StrategyPreview, { type Strategy } from "./create/StrategyPreview";
 import DeploymentDetails from "./create/DeploymentDetails";
 import toast from "react-hot-toast";
 import { useStrategyGeneration } from "@/hooks/useStrategyGeneration";
+import { useAccount, useWriteContract, usePublicClient } from "wagmi";
+import { decodeEventLog } from "viem";
+import { STRATEGY_CONTRACT_ABI } from "@/abis/strategyContract";
+import { AMOY_STRATEGY_CONTRACT } from "@/constants/amoy_contract";
+import { TOKENS, type TokenKey } from "@/constants/polygonTokens";
+import { buildStepsFromAi } from "@/utils/buildStepsFromAi";
 
 const STEPS = [
   { label: "Prompt" },
@@ -18,6 +24,11 @@ const STEPS = [
 export default function CreateStrategy() {
   const navigate = useNavigate();
   const strategyMutation = useStrategyGeneration();
+  
+  // Wagmi hooks for EVM wallet and contract interaction
+  const { isConnected, address } = useAccount();
+  const { writeContractAsync } = useWriteContract();
+  const publicClient = usePublicClient();
 
   const [prompt, setPrompt] = useState("");
   const [selectedChain, setSelectedChain] = useState(AVAILABLE_CHAINS[0].id);
@@ -56,43 +67,127 @@ export default function CreateStrategy() {
   const handleDeploy = async () => {
     if (!aiStrategy) return;
 
+    // Validate token
+    const tokenKey = aiStrategy.inputToken.toUpperCase() as TokenKey;
+    const token = TOKENS[tokenKey];
+
+    if (!token) {
+      toast.error("AI returned an unsupported input token. Try again.");
+      return;
+    }
+
+    // Validate wallet connection
+    if (!isConnected || !address) {
+      toast.error("Connect your wallet on Polygon Amoy testnet to deploy the strategy.");
+      return;
+    }
+
+    // Only deploy to Polygon for now
+    if (selectedChain !== "Polygon") {
+      toast.error("Polygon deployment is currently only supported. Please select Polygon.");
+      return;
+    }
+
     setDeploying(true);
 
     try {
-      // API endpoint integration-ready
-      const res = await fetch("/api/strategies/create-from-ai", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt,
-          strategy: aiStrategy,
-          chain: selectedChain,
-        }),
+      // Build steps from AI strategy
+      const steps = buildStepsFromAi(aiStrategy);
+
+      // Write contract transaction
+      const hash = await writeContractAsync({
+        abi: STRATEGY_CONTRACT_ABI,
+        address: AMOY_STRATEGY_CONTRACT,
+        functionName: "createStrategy",
+        args: [
+          aiStrategy.name,
+          aiStrategy.summary,
+          steps as any, // Type assertion needed due to wagmi's strict ABI type inference
+          BigInt(0), // minDeposit
+        ],
       });
 
-      if (!res.ok) {
-        throw new Error("Failed to deploy strategy");
+      if (!publicClient) {
+        throw new Error("Public client not available");
       }
 
-      const data = await res.json();
-      toast.success("Strategy deployed successfully!");
+      // Wait for transaction receipt
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
 
-      // Navigate to strategy detail page if we have an ID
-      if (data.strategyId) {
-        navigate(`/strategy/${data.strategyId}`);
+      if (receipt.status === "reverted") {
+        toast.error("Failed to deploy strategy. Transaction was reverted.");
+        return;
+      }
+
+      // Decode CreateStrategy event to get strategyId
+      let strategyId: `0x${string}` | null = null;
+
+      for (const log of receipt.logs) {
+        if (
+          log.address.toLowerCase() !== AMOY_STRATEGY_CONTRACT.toLowerCase()
+        ) {
+          continue;
+        }
+
+        try {
+          const decoded = decodeEventLog({
+            abi: STRATEGY_CONTRACT_ABI,
+            data: log.data,
+            topics: log.topics,
+          });
+
+          if (decoded.eventName === "CreateStrategy") {
+            const args = decoded.args as unknown as {
+              strategyId?: `0x${string}`;
+            };
+            if (args?.strategyId) {
+              strategyId = args.strategyId;
+              break;
+            }
+          }
+        } catch {
+          // Ignore non-matching logs
+        }
+      }
+
+      if (strategyId != null) {
+        // Try to save strategy metadata via API (optional)
+        try {
+          const res = await fetch("/api/strategies/create-from-ai", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              strategyId,
+              prompt,
+              strategy: aiStrategy,
+            }),
+          });
+
+          if (!res.ok) {
+            console.warn("Failed to save strategy metadata, but deployment succeeded");
+          }
+        } catch (apiError) {
+          // API call is optional - don't fail deployment if it fails
+          console.warn("API call failed, but deployment succeeded:", apiError);
+        }
+
+        toast.success("Strategy deployed successfully!");
+        navigate(`/strategy/${strategyId}`);
       } else {
+        toast.error("Strategy deployed but could not extract strategy ID.");
         navigate("/dashboard");
       }
-    } catch (e) {
-      const message = e instanceof Error ? e.message : "Unexpected error";
-      toast.error(message);
-      console.error("Deployment error:", e);
-
-      // For demo purposes when API doesn't exist yet
-      if (message.includes("Failed to fetch") || message.includes("404")) {
-        toast("API not available yet. Deployment will work once connected.", {
-          icon: "ℹ️",
-        });
+    } catch (error: any) {
+      const errorMessage = error?.message || String(error);
+      console.error("Deployment error:", error);
+      
+      // Provide user-friendly error messages
+      if (errorMessage.includes("User rejected") || errorMessage.includes("user rejected")) {
+        toast.error("Transaction was rejected. Please try again.");
+      } else if (errorMessage.includes("insufficient funds")) {
+        toast.error("Insufficient funds for transaction.");
+      } else {
+        toast.error(`Failed to deploy strategy: ${errorMessage}`);
       }
     } finally {
       setDeploying(false);
